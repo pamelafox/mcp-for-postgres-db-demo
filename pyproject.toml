@@ -1,0 +1,26 @@
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+lint.select = ["E", "F", "I", "UP"]
+lint.ignore = ["D203"]
+lint.isort.known-first-party = ["fastapi_app"]
+
+[tool.mypy]
+check_untyped_defs = true
+exclude = [".venv/*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --cov"
+testpaths = ["tests"]
+pythonpath = ['src/backend']
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/backend/fastapi_app/api"]
+concurrency = ["thread", "greenlet"]
+
+[tool.coverage.report]
+show_missing = true
