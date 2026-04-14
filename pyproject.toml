@@ -1,25 +1,50 @@
+[project]
+name = "mcp-for-postgres-db-demo"
+version = "0.1.0"
+description = "MCP servers for PostgreSQL with different tool design levels"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp>=3.0.0b1",
+    "mcp>=1.3.0",
+    "pglast>=7.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "geoalchemy2>=0.15.2",
+    "python-dotenv>=1.0.1",
+    "azure-identity>=1.16.1",
+    "github-copilot-sdk>=0.1.20",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "pre-commit>=4.0.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24.0",
+]
+
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py312"
 lint.select = ["E", "F", "I", "UP"]
 lint.ignore = ["D203"]
-lint.isort.known-first-party = ["fastapi_app"]
+lint.isort.known-first-party = ["servers", "agents", "evals"]
 
 [tool.mypy]
 check_untyped_defs = true
 exclude = [".venv/*"]
 
 [tool.pytest.ini_options]
-addopts = "-ra --cov"
+addopts = "-ra"
 testpaths = ["tests"]
-pythonpath = ['src/backend']
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = ["src/backend/fastapi_app/api"]
+source = ["servers", "agents", "evals"]
 concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
