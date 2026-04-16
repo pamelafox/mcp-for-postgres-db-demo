@@ -28,7 +28,15 @@ It contains:
 
 ## Setup
 
+The easiest way to get a local PostgreSQL + PostGIS instance is to use the included dev container, which starts a `postgis/postgis` container automatically:
+
+1. Open this repo in **GitHub Codespaces** or **VS Code Dev Containers** (requires Docker Desktop).
+2. The dev container provides PostgreSQL on `localhost:5432` with user `admin` / password `postgres`.
+3. Continue with the steps below inside the dev container terminal.
+
 ### Prerequisites
+
+If not using the dev container, install these manually:
 
 - [Python 3.12+](https://www.python.org/downloads/)
 - [PostgreSQL 14+](https://www.postgresql.org/download/) with [PostGIS](https://postgis.net/install/)
@@ -38,12 +46,6 @@ It contains:
 
 ```bash
 uv sync
-```
-
-Or with pip:
-
-```bash
-pip install -e .
 ```
 
 ### Environment variables
@@ -75,13 +77,13 @@ Required for agents:
 1. Create the database and enable PostGIS:
 
     ```bash
-    python scripts/setup_postgres_database.py
+    uv run scripts/setup_postgres_database.py
     ```
 
 2. Ingest the bee observations CSV:
 
     ```bash
-    python scripts/ingest_observations.py --csv data/observations.csv
+    uv run scripts/ingest_observations.py --csv data/observations.csv
     ```
 
 ## Run the MCP servers
@@ -90,16 +92,16 @@ Each server runs independently on port 8000. Start one at a time:
 
 ```bash
 # Level 1: Free-form SQL (maximum flexibility, maximum risk)
-python servers/level1_freeform.py
+uv run servers/level1_freeform.py
 
 # Level 2: Read-only SQL (parsed with pglast, non-SELECT rejected)
-python servers/level2_readonly.py
+uv run servers/level2_readonly.py
 
 # Level 3: Scoped WHERE clause (server controls SELECT/FROM)
-python servers/level3_scoped.py
+uv run servers/level3_scoped.py
 
 # Level 4: Fully typed tools (no SQL surface, MCP annotations)
-python servers/level4_typed.py
+uv run servers/level4_typed.py
 ```
 
 All servers expose a Streamable HTTP endpoint at `http://localhost:8000/mcp`.
@@ -109,21 +111,16 @@ All servers expose a Streamable HTTP endpoint at `http://localhost:8000/mcp`.
 Start a server first, then run the Copilot SDK agent:
 
 ```bash
-# Run with all tools the server exposes:
-python agents/copilotsdk_agent.py --query "What bees are active near San Francisco in March?"
-
-# Run with specific tools (useful for level 4):
-python agents/copilotsdk_agent.py --tools search_species,search_observations --query "Find leafcutter bees near Portland"
+uv run agents/copilotsdk_agent.py --query "What bees are active near San Francisco in March?"
 
 # Show tool calls and reasoning:
-python agents/copilotsdk_agent.py --show-tool-calls --show-reasoning --query "Has anyone seen a sweat bee near Austin?"
+uv run agents/copilotsdk_agent.py --show-tool-calls --show-reasoning --query "Has anyone seen a sweat bee near Austin?"
 ```
 
 ### Agent options
 
 | Option | Description |
 |--------|-------------|
-| `--tools` | Comma-separated list of allowed tools (default: all) |
 | `--query` | Query to send to the agent |
 | `--model` | Model: gpt-5, gpt-5.3-codex, claude-sonnet-4, claude-sonnet-4.5, claude-haiku-4.5 |
 | `--show-tool-calls` | Print tool calls after the run |
@@ -134,14 +131,14 @@ python agents/copilotsdk_agent.py --show-tool-calls --show-reasoning --query "Ha
 Start a level 4 server, then run the eval harness:
 
 ```bash
-python servers/level4_typed.py &
-python evals/runner.py
+uv run servers/level4_typed.py &
+uv run evals/runner.py
 ```
 
 Run specific cases:
 
 ```bash
-python evals/runner.py --cases species_by_common_name,observations_near_location
+uv run evals/runner.py --cases species_by_common_name,observations_near_location
 ```
 
 Results are saved to `evals/runs/results.json`.
@@ -163,3 +160,11 @@ This project supports deployment to Azure using the [Azure Developer CLI](https:
     ```
 
 This deploys the app on Azure Container Apps with Azure PostgreSQL Flexible Server.
+
+## Resources
+
+- [Model Context Protocol](https://modelcontextprotocol.io/) — the MCP specification and documentation
+- [Tool Annotations as Risk Vocabulary](https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/) — MCP blog post on what annotation hints can and can't do
+- [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) — Google's open-source MCP server for databases, with built-in connection pooling, authentication, and tool construction from SQL templates
+- [Designing SQL Tools for AI Agents](https://www.arcade.dev/blog/sql-tools-ai-agents-security) — Arcade's taxonomy of Exploratory vs Operational SQL tools
+- [Context Engineering for MCP Servers](https://www.youtube.com/watch?v=FV5UJr-Yan8) — MotherDuck's Posette talk on MCP server design lessons

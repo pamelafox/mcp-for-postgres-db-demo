@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -22,7 +23,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 logger = logging.getLogger("ingest")
 
@@ -456,15 +457,11 @@ async def run_ingestion(csv_path: str, engine: AsyncEngine):
 
 
 def build_engine_from_env() -> AsyncEngine:
-    import os
-
-    from sqlalchemy.ext.asyncio import create_async_engine
-
     load_dotenv()
     host = os.getenv("POSTGRES_HOST", "localhost")
     user = os.getenv("POSTGRES_USERNAME", "postgres")
     pwd = os.getenv("POSTGRES_PASSWORD", "postgres")
-    db = os.getenv("POSTGRES_DB", "postgres")
+    db = os.getenv("POSTGRES_DATABASE", "postgres")
     port = int(os.getenv("POSTGRES_PORT", "5432"))
     url = f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}"
     return create_async_engine(url, echo=False, pool_pre_ping=True)

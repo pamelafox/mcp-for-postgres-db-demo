@@ -1,13 +1,34 @@
 import argparse
 import asyncio
 import logging
+import os
 
 from dotenv import load_dotenv
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from fastapi_app.postgres_engine import create_postgres_engine_from_args
+logger = logging.getLogger("db_mcp.azurerole")
 
-logger = logging.getLogger("ragapp")
+
+async def create_engine_from_args(args):
+    host = args.host or os.environ["POSTGRES_HOST"]
+    username = args.username or os.environ["POSTGRES_USERNAME"]
+    database = args.database or os.environ.get("POSTGRES_DATABASE", "postgres")
+    sslmode = args.sslmode or os.environ.get("POSTGRES_SSL", "")
+
+    from azure.identity import AzureDeveloperCliCredential
+
+    credential = AzureDeveloperCliCredential(
+        tenant_id=args.tenant_id or os.getenv("AZURE_TENANT_ID"),
+        process_timeout=60,
+    )
+    token = credential.get_token("https://ossrdbms-aad.database.windows.net/.default")
+    password = token.token
+
+    database_uri = f"postgresql+asyncpg://{username}:{password}@{host}/{database}"
+    if sslmode:
+        database_uri += f"?ssl={sslmode}"
+    return create_async_engine(database_uri, echo=False)
 
 
 async def assign_role_for_webapp(engine, app_identity_name):
@@ -53,7 +74,7 @@ async def main():
         logger.info("This script is intended to be used with Azure Database for PostgreSQL, not local PostgreSQL.")
         return
 
-    engine = await create_postgres_engine_from_args(args)
+    engine = await create_engine_from_args(args)
 
     await assign_role_for_webapp(engine, args.app_identity_name)
 

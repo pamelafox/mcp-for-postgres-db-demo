@@ -7,12 +7,13 @@ The LLM can read schema, then execute any SQL it constructs.
 import logging
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from sqlalchemy import text
 
 from servers.db import create_engine, get_db_schema_text
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(message)s")
-logger = logging.getLogger("bees_mcp.level1")
+logger = logging.getLogger("db_mcp.level1")
 logger.setLevel(logging.INFO)
 
 mcp = FastMCP("Bees DB - Free-form SQL")
@@ -27,7 +28,7 @@ async def _get_engine():
     return _engine
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def get_db_schema() -> str:
     """Return the database schema (tables, columns, types) for all public tables.
 
@@ -48,12 +49,9 @@ async def execute_sql(sql: str) -> str:
     async with engine.connect() as conn:
         result = await conn.execute(text(sql))
         if result.returns_rows:
-            rows = result.fetchall()
             columns = list(result.keys())
-            lines = [" | ".join(columns)]
-            for row in rows:
-                lines.append(" | ".join(str(v) for v in row))
-            return "\n".join(lines)
+            rows = result.fetchmany(100)
+            return {"columns": columns, "rows": [[str(v) for v in row] for row in rows]}
         await conn.commit()
         return f"Statement executed. Rows affected: {result.rowcount}"
 

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 load_dotenv(override=True)
 
-logger = logging.getLogger("bees_mcp")
+logger = logging.getLogger("db_mcp")
 
 
 def _get_azure_credential():

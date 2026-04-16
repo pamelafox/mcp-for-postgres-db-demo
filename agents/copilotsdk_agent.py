@@ -1,17 +1,13 @@
 """GitHub Copilot SDK agent for testing MCP server variants.
 
 Connects to a running MCP server over Streamable HTTP and runs queries.
-Supports filtering to specific tools via the Copilot SDK's tools parameter.
 
 Usage:
     # Start a server first:
     python servers/level4_typed.py
 
-    # Run with all tools:
+    # Run a query:
     python agents/copilotsdk_agent.py --query "What bees are active near SF in March?"
-
-    # Run with specific tools:
-    python agents/copilotsdk_agent.py --tools search_species,search_observations --query "..."
 """
 
 import argparse
@@ -22,9 +18,8 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 
-from copilot import CopilotClient, PermissionHandler, SessionConfig
+from copilot import CopilotClient
 from copilot.generated.session_events import SessionEvent, SessionEventType
-from copilot.types import MCPRemoteServerConfig
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -35,8 +30,14 @@ logger.setLevel(logging.INFO)
 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8000/mcp")
 
-COPILOT_MODELS = ["gpt-5", "gpt-5.3-codex", "claude-sonnet-4", "claude-sonnet-4.5", "claude-haiku-4.5"]
-DEFAULT_COPILOT_MODEL = "gpt-5"
+COPILOT_MODELS = [
+    "gpt-5",
+    "gpt-5.3-codex",
+    "claude-sonnet-4",
+    "claude-sonnet-4.5",
+    "claude-haiku-4.5",
+]
+DEFAULT_COPILOT_MODEL = "gpt-5.4"
 
 
 # =============================================================================
@@ -68,14 +69,12 @@ class QueryResult:
 
 
 async def run_query(
-    tool_names: list[str],
     query: str,
     model: str | None = None,
 ) -> QueryResult:
-    """Run a single query against the agent with specific tools.
+    """Run a single query against the agent.
 
     Args:
-        tool_names: Names of the tools the agent can use (empty = all tools)
         query: The user query to send
         model: Model name to use (default: gpt-5)
 
@@ -85,68 +84,51 @@ async def run_query(
     deployment = model or DEFAULT_COPILOT_MODEL
 
     tool_calls: list[ToolCallInfo] = []
-    output_parts: list[str] = []
     reasoning_parts: list[str] = []
 
     def handle_event(event: SessionEvent):
-        """Handle events from the Copilot session."""
         if event.type == SessionEventType.TOOL_EXECUTION_START:
             if hasattr(event, "data") and event.data:
                 data = event.data
                 tool_name_val = getattr(data, "mcp_tool_name", None) or getattr(data, "tool_name", None)
                 args = getattr(data, "arguments", None)
                 if tool_name_val:
-                    tool_calls.append(ToolCallInfo(
-                        tool_name=tool_name_val,
-                        arguments=args if isinstance(args, dict) else {},
-                    ))
-
-        elif event.type == SessionEventType.ASSISTANT_MESSAGE:
-            if hasattr(event, "data") and event.data and hasattr(event.data, "content"):
-                content = event.data.content
-                if content:
-                    output_parts.append(str(content))
-
+                    tool_calls.append(
+                        ToolCallInfo(
+                            tool_name=tool_name_val,
+                            arguments=args if isinstance(args, dict) else {},
+                        )
+                    )
         elif event.type == SessionEventType.ASSISTANT_REASONING:
             if hasattr(event, "data") and event.data and hasattr(event.data, "content"):
                 content = event.data.content
                 if content:
                     reasoning_parts.append(str(content))
 
-    mcp_config: dict = {
-        "type": "http",
-        "url": MCP_SERVER_URL,
-    }
-    if tool_names:
-        mcp_config["tools"] = tool_names
-
-    client = None
-    session = None
     try:
-        client = CopilotClient()
+        async with CopilotClient() as client:
+            session = await client.create_session(
+                on_permission_request=lambda **kwargs: True,
+                model=deployment,
+                mcp_servers={
+                    "bees": {"type": "http", "url": MCP_SERVER_URL},
+                },
+                system_message={
+                    "mode": "append",
+                    "content": (
+                        "You help users explore bee biodiversity data. "
+                        "The database contains observations of bee species from iNaturalist. "
+                        "Always use the available MCP tools to query the database before answering. "
+                        f"Today's date is {datetime.now().strftime('%B %-d, %Y')}."
+                    ),
+                },
+            )
+            session.on(handle_event)
+            response = await session.send_and_wait(query, timeout=60.0)
 
-        session_config = SessionConfig(
-            model=deployment,
-            mcp_servers={
-                "bees": MCPRemoteServerConfig(**mcp_config),
-            },
-            system_message={
-                "mode": "replace",
-                "content": (
-                    "You help users explore bee biodiversity data. "
-                    "The database contains observations of bee species from iNaturalist. "
-                    f"Today's date is {datetime.now().strftime('%B %-d, %Y')}."
-                ),
-            },
-            on_permission_request=PermissionHandler.approve_all,
-        )
-
-        session = await client.create_session(session_config)
-        session.on(handle_event)
-
-        await session.send_and_wait({"prompt": query})
-
-        output = "\n".join(output_parts) if output_parts else ""
+        output = ""
+        if response and hasattr(response, "data") and hasattr(response.data, "content"):
+            output = response.data.content or ""
         reasoning = "\n\n".join(reasoning_parts) if reasoning_parts else None
 
         return QueryResult(
@@ -156,13 +138,8 @@ async def run_query(
         )
 
     except Exception as e:
-        logger.exception(f"Error running query with tools {tool_names}")
+        logger.exception("Error running query")
         return QueryResult(output="", tool_calls=[], error=str(e))
-    finally:
-        if session is not None:
-            await session.destroy()
-        if client is not None:
-            await client.stop()
 
 
 # =============================================================================
@@ -175,12 +152,6 @@ DEFAULT_QUERY = "What bees are active near San Francisco in March?"
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Run Copilot SDK agent against bees MCP server")
-    parser.add_argument(
-        "--tools",
-        type=str,
-        default="",
-        help="Comma-separated list of allowed tools (default: all tools)",
-    )
     parser.add_argument(
         "--query",
         type=str,
@@ -211,11 +182,7 @@ async def main():
     """Run the agent with command line arguments."""
     args = parse_args()
 
-    tool_names = [t.strip() for t in args.tools.split(",") if t.strip()] if args.tools else []
-    logger.info(f"Using tools: {tool_names or '(all)'}")
-
     result = await run_query(
-        tool_names=tool_names,
         query=args.query,
         model=args.model,
     )

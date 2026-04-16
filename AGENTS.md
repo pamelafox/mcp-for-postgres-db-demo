@@ -16,32 +16,22 @@
 If the dependency is for the application (not for dev or testing):
 
 * Add the new dependency to the `[project.dependencies]` list in `pyproject.toml`.
-* Navigate to src/backend and run:
-
-    uv pip compile pyproject.toml -o requirements.txt
-
 * Install the new dependencies:
 
-    pip install -r requirements.txt
+    uv sync
 
 If the dependency is for development or testing:
 
-* Add the new dependency to requirements-dev.txt
+* Add the new dependency to the `[dependency-groups] dev` list in `pyproject.toml`.
 * Install the new dependencies:
-    pip install -r requirements-dev.txt
-
-## Running the server
-
-Run in reload mode:
-
-python -m uvicorn fastapi_app:create_app --factory --reload
+    uv sync --group dev
 
 ## Running tests
 
 Install the dev requirements:
 
-pip install -r requirements-dev.txt
+uv sync --group dev
 
 Then run the tests with:
 
-python -m pytest
+uv run python -m pytest

@@ -12,13 +12,14 @@ import logging
 from datetime import date
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from servers.db import create_engine, create_session
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(message)s")
-logger = logging.getLogger("bees_mcp.level4")
+logger = logging.getLogger("db_mcp.level4")
 logger.setLevel(logging.INFO)
 
 mcp = FastMCP("Bees DB - Typed Tools")
@@ -86,10 +87,19 @@ class HistoricalObservationResult(BaseModel):
     verified: bool
 
 
+class ObservationCount(BaseModel):
+    """Observation count for a species in a region."""
+
+    taxon_id: int
+    scientific_name: str | None = None
+    common_name: str | None = None
+    observation_count: int
+
+
 # --------------- Read tools ---------------
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def search_species(
     q: str,
     limit: int = 10,
@@ -132,7 +142,7 @@ async def search_species(
         ]
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def get_species_phenology(taxon_id: int) -> PhenologyResult | str:
     """Get monthly activity data for a specific species by taxon_id.
 
@@ -166,13 +176,13 @@ async def get_species_phenology(taxon_id: int) -> PhenologyResult | str:
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def search_observations(
     lat: float = Field(ge=-90, le=90, description="Latitude of search center"),
     lon: float = Field(ge=-180, le=180, description="Longitude of search center"),
-    radius_km: float = Field(25, gt=0, le=100, description="Search radius in kilometers (max 100)"),
     start_date: date = Field(description="Start date (inclusive)"),
     end_date: date = Field(description="End date (inclusive)"),
+    radius_km: float = Field(25, gt=0, le=100, description="Search radius in kilometers (max 100)"),
     taxon_id: int | None = Field(None, description="Filter to a specific species by taxon_id"),
     limit: int = Field(25, gt=0, le=100, description="Maximum number of results"),
 ) -> list[ObservationResult]:
@@ -190,8 +200,8 @@ async def search_observations(
         "lon": lon,
         "lat": lat,
         "radius": radius_m,
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
+        "start_date": start_date,
+        "end_date": end_date,
         "limit": limit,
     }
 
@@ -230,13 +240,68 @@ async def search_observations(
         ]
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def count_observations(
+    lat: float = Field(ge=-90, le=90, description="Latitude of search center"),
+    lon: float = Field(ge=-180, le=180, description="Longitude of search center"),
+    start_date: date = Field(description="Start date (inclusive)"),
+    end_date: date = Field(description="End date (inclusive)"),
+    radius_km: float = Field(25, gt=0, le=100, description="Search radius in kilometers (max 100)"),
+    taxon_id: int | None = Field(None, description="Filter to a specific species by taxon_id"),
+) -> list[ObservationCount]:
+    """Count bee observations per species in a region and date range.
+
+    Returns species-level counts (how many observations per species), not individual records.
+    Use search_observations instead if you need the actual observation details (dates, locations, IDs).
+    """
+    radius_m = radius_km * 1000.0
+    engine = await _get_engine()
+
+    params: dict = {
+        "lon": lon,
+        "lat": lat,
+        "radius": radius_m,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+    taxon_filter = ""
+    if taxon_id is not None:
+        taxon_filter = "AND o.taxon_id = :taxon_id"
+        params["taxon_id"] = taxon_id
+
+    sql = text(f"""
+        SELECT o.taxon_id, s.scientific_name, s.common_name, COUNT(*) AS observation_count
+        FROM observations o
+        LEFT JOIN species s ON o.taxon_id = s.taxon_id
+        WHERE o.geom IS NOT NULL
+          AND ST_DWithin(o.geom, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :radius)
+          AND o.observed_date BETWEEN :start_date AND :end_date
+          {taxon_filter}
+        GROUP BY o.taxon_id, s.scientific_name, s.common_name
+        ORDER BY observation_count DESC
+    """)
+
+    async with engine.connect() as conn:
+        result = await conn.execute(sql, params)
+        return [
+            ObservationCount(
+                taxon_id=row.taxon_id,
+                scientific_name=row.scientific_name,
+                common_name=row.common_name,
+                observation_count=row.observation_count,
+            )
+            for row in result.fetchall()
+        ]
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def search_historical_observations(
     lat: float = Field(ge=-90, le=90, description="Latitude of search center"),
     lon: float = Field(ge=-180, le=180, description="Longitude of search center"),
-    radius_km: float = Field(25, gt=0, le=100, description="Search radius in kilometers (max 100)"),
     start_year: int = Field(ge=1900, le=2019, description="Start year (inclusive, max 2019)"),
     end_year: int = Field(ge=1900, le=2019, description="End year (inclusive, max 2019)"),
+    radius_km: float = Field(25, gt=0, le=100, description="Search radius in kilometers (max 100)"),
     taxon_id: int | None = Field(None, description="Filter to a specific species by taxon_id"),
     limit: int = Field(25, gt=0, le=100, description="Maximum number of results"),
 ) -> list[HistoricalObservationResult]:
@@ -305,7 +370,7 @@ async def search_historical_observations(
 # --------------- Write tools ---------------
 
 
-@mcp.tool(annotations={"destructiveHint": True})
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
 async def add_observation(
     taxon_id: int = Field(description="Species taxon_id (use search_species to find this)"),
     lat: float = Field(ge=-90, le=90, description="Latitude where the bee was observed"),
@@ -354,7 +419,7 @@ async def add_observation(
         await session.close()
 
 
-@mcp.tool(annotations={"destructiveHint": True})
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
 async def delete_observation(observation_id: int) -> str:
     """Delete a bee observation by its observation_id.
 

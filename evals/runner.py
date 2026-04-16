@@ -89,22 +89,17 @@ class Summary:
 
 async def run_single_case(
     case: BeeCase,
-    tool_names: list[str] | None = None,
     model: str | None = None,
 ) -> RunResult:
     """Run a single test case."""
     t0 = time.perf_counter()
     query_result = await run_query(
-        tool_names=tool_names or [],
         query=case.prompt,
         model=model,
     )
     latency_ms = (time.perf_counter() - t0) * 1000
 
-    tool_calls = [
-        ToolCallInfo(tool_name=tc.tool_name, arguments=tc.arguments)
-        for tc in query_result.tool_calls
-    ]
+    tool_calls = [ToolCallInfo(tool_name=tc.tool_name, arguments=tc.arguments) for tc in query_result.tool_calls]
 
     if query_result.error:
         logger.error(f"Error running case {case.name}: {query_result.error}")
@@ -137,7 +132,6 @@ async def run_single_case(
 
 async def run_evaluation(
     cases: list[BeeCase],
-    tool_names: list[str] | None = None,
     model: str | None = None,
 ) -> tuple[list[RunResult], Summary]:
     """Run evaluation across all cases."""
@@ -148,7 +142,6 @@ async def run_evaluation(
         logger.info(f"Running: {case.name}")
         result = await run_single_case(
             case=case,
-            tool_names=tool_names,
             model=model,
         )
         results.append(result)
@@ -232,12 +225,6 @@ def parse_args() -> argparse.Namespace:
         help="Comma-separated list of case names (default: all cases)",
     )
     parser.add_argument(
-        "--tools",
-        type=str,
-        default="",
-        help="Comma-separated list of tool names to filter to (default: all tools)",
-    )
-    parser.add_argument(
         "--output",
         type=str,
         default="evals/runs",
@@ -258,7 +245,6 @@ async def main():
     load_dotenv(override=True)
 
     model_name = args.model or get_model_name()
-    tool_names = [t.strip() for t in args.tools.split(",") if t.strip()] if args.tools else None
 
     if args.cases:
         case_names = {c.strip() for c in args.cases.split(",")}
@@ -267,12 +253,9 @@ async def main():
         cases = BEE_CASES
 
     logger.info(f"Running {len(cases)} cases with model {model_name}")
-    if tool_names:
-        logger.info(f"Filtering to tools: {tool_names}")
 
     results, summary = await run_evaluation(
         cases=cases,
-        tool_names=tool_names,
         model=args.model,
     )
 

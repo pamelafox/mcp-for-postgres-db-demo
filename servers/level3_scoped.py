@@ -8,12 +8,13 @@ Read-only, single-table per tool, with max LIMIT enforcement.
 import logging
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from sqlalchemy import text
 
 from servers.db import create_engine
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(message)s")
-logger = logging.getLogger("bees_mcp.level3")
+logger = logging.getLogger("db_mcp.level3")
 logger.setLevel(logging.INFO)
 
 MAX_LIMIT = 100
@@ -44,15 +45,12 @@ async def _run_scoped_query(table: str, columns: str, where_clause: str, order_b
     engine = await _get_engine()
     async with engine.connect() as conn:
         result = await conn.execute(text(sql))
-        rows = result.fetchall()
         columns_list = list(result.keys())
-        lines = [" | ".join(columns_list)]
-        for row in rows:
-            lines.append(" | ".join(str(v) for v in row))
-        return "\n".join(lines)
+        rows = result.fetchmany(MAX_LIMIT)
+        return {"columns": columns_list, "rows": [[str(v) for v in row] for row in rows]}
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def query_observations(
     where_clause: str,
     order_by: str | None = None,
@@ -78,7 +76,7 @@ async def query_observations(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def query_species(
     where_clause: str,
     order_by: str | None = None,

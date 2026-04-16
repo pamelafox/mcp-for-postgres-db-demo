@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+		<title>An MCP for your Postgres DB</title>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.1.0/dist/reset.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.1.0/dist/reveal.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.1.0/dist/theme/simple.css" id="theme">
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/a11y-light.min.css">
+		<style>
+		:root {
+			--posette-purple: #6133ff;
+			--posette-dark: #190649;
+			--posette-deep: #2a147a;
+			--posette-light-bg: #f3f0fa;
+			--posette-card-bg: #f1e9ff;
+			--posette-accent: #9C00FF;
+			--posette-text: #190649;
+			--posette-muted: #555;
+			--posette-teal: #00DEA8;
+			--posette-grad1: #741fc8;
+			--posette-grad2: #9316bf;
+		}
+
+		/* Light background */
+		.reveal {
+			background: var(--posette-light-bg);
+		}
+
+		/* Left-align by default */
+		.reveal .slides section {
+			text-align: left;
+			padding-top: 0;
+		}
+		.reveal .slides section > h3:first-child,
+		.reveal .slides section > h2:first-child {
+			margin-top: 0;
+		}
+
+		/* Headings: Posette purple, Outfit font */
+		.reveal h1, .reveal h2, .reveal h3 {
+			font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+			color: var(--posette-deep);
+			background: none;
+			display: block;
+			padding: 6px 0;
+			text-transform: none;
+			letter-spacing: -0.02em;
+			font-weight: 700;
+			-webkit-text-stroke: 0;
+			text-shadow: none;
+		}
+		.reveal h1 { font-size: 2.2em; }
+		.reveal h2 { font-size: 1.8em; }
+		.reveal h3 { font-size: 1.6em; }
+
+		/* Body font */
+		.reveal {
+			font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+		}
+
+		/* Links in purple */
+		.reveal a {
+			color: var(--posette-purple);
+			text-decoration: underline;
+		}
+		.reveal a:hover {
+			color: var(--posette-accent);
+			background: none;
+		}
+
+        /* Section heading slides: purple gradient, fades on all edges */
+		.reveal section.heading-only {
+			display: flex !important;
+			flex-direction: column;
+			justify-content: flex-start;
+			align-items: center;
+			text-align: center;
+			height: 100%;
+			width: 100%;
+			max-width: none;
+			min-height: 720px;
+			padding: 120px 72px 220px;
+			box-sizing: border-box;
+			background:
+				radial-gradient(ellipse at 30% 32%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 52%),
+				linear-gradient(135deg, #5a27d1 0%, #741fc8 48%, #9316bf 100%);
+			-webkit-mask-image:
+				linear-gradient(to right,  rgba(0,0,0,0) 0%, rgba(0,0,0,1) 1.5%, rgba(0,0,0,1) 98.5%, rgba(0,0,0,0) 100%),
+				linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 68%, rgba(0,0,0,0.96) 72%, rgba(0,0,0,0.88) 76%, rgba(0,0,0,0.78) 80%, rgba(0,0,0,0.64) 84%, rgba(0,0,0,0.48) 88%, rgba(0,0,0,0.32) 91%, rgba(0,0,0,0.18) 94%, rgba(0,0,0,0.08) 97%, rgba(0,0,0,0) 100%);
+			-webkit-mask-composite: destination-in;
+			mask-image:
+				linear-gradient(to right,  rgba(0,0,0,0) 0%, rgba(0,0,0,1) 1.5%, rgba(0,0,0,1) 98.5%, rgba(0,0,0,0) 100%),
+				linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 68%, rgba(0,0,0,0.96) 72%, rgba(0,0,0,0.88) 76%, rgba(0,0,0,0.78) 80%, rgba(0,0,0,0.64) 84%, rgba(0,0,0,0.48) 88%, rgba(0,0,0,0.32) 91%, rgba(0,0,0,0.18) 94%, rgba(0,0,0,0.08) 97%, rgba(0,0,0,0) 100%);
+			mask-composite: intersect;
+			border-radius: 0;
+		}
+		.reveal section.heading-only h1,
+		.reveal section.heading-only h2,
+		.reveal section.heading-only h3 {
+			color: #fff;
+			position: relative;
+			padding-bottom: 20px;
+		}
+		.reveal section.heading-only h1::after,
+		.reveal section.heading-only h2::after,
+		.reveal section.heading-only h3::after {
+			content: "";
+			display: block;
+			width: 80px;
+			height: 6px;
+			border-radius: 999px;
+			margin: 18px auto 0;
+			background: linear-gradient(90deg, #00DEA8 0%, rgba(255,255,255,0.25) 100%);
+		}
+		.reveal section.heading-only p {
+			color: rgba(255, 255, 255, 0.85);
+		}
+
+        /* Demo slides */
+        .reveal section.demo-slide {
+            display: flex !important;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 60px;
+            text-align: center;
+            height: 100%;
+            min-height: 720px;
+            background: linear-gradient(135deg, #5a27d1 0%, #741fc8 48%, #9316bf 100%);
+            border-radius: 0;
+        }
+        .reveal section.demo-slide h1,
+        .reveal section.demo-slide h2,
+        .reveal section.demo-slide h3 {
+            color: #fff;
+        }
+        .reveal section.demo-slide p {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .reveal section.demo-slide a,
+        .reveal section.demo-slide a:hover,
+        .reveal section.demo-slide a:visited {
+            color: rgba(255, 255, 255, 0.96) !important;
+            text-decoration-color: rgba(255, 255, 255, 0.96) !important;
+        }
+        .reveal section.demo-slide a strong {
+            color: rgba(255, 255, 255, 0.96) !important;
+        }
+
+        .reveal section.demo-slide.demo-window {
+            background:
+                radial-gradient(circle at top left, rgba(97, 51, 255, 0.16) 0%, rgba(97, 51, 255, 0) 28%),
+                radial-gradient(circle at bottom right, rgba(0, 222, 168, 0.14) 0%, rgba(0, 222, 168, 0) 26%),
+                #f3f0fa;
+        }
+        .reveal section.demo-slide.demo-window .demo-window-shell {
+            width: min(860px, 88%);
+            background: #ffffff;
+            border: 1px solid #d8cef2;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 22px 60px rgba(42, 20, 122, 0.16);
+            text-align: left;
+        }
+        .reveal section.demo-slide.demo-window .demo-window-chrome {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 52px;
+            padding: 0 18px;
+            background: linear-gradient(135deg, #ede8fb 0%, #e0d8f8 100%);
+            border-bottom: 1px solid #d2c8f0;
+        }
+        .reveal section.demo-slide.demo-window .demo-window-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .reveal section.demo-slide.demo-window .demo-window-dot.red { background: #ff7a59; }
+        .reveal section.demo-slide.demo-window .demo-window-dot.yellow { background: #f5c044; }
+        .reveal section.demo-slide.demo-window .demo-window-dot.green { background: #58bf6b; }
+        .reveal section.demo-slide.demo-window .demo-window-tab {
+            margin-left: 10px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            color: #3a2578;
+            font-size: 0.44em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .reveal section.demo-slide.demo-window .demo-window-body {
+            padding: 40px 44px 44px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8f5ff 100%);
+        }
+
+        .reveal section.demo-slide.demo-rail {
+            background:
+                linear-gradient(90deg, #190649 0 118px, transparent 118px),
+                linear-gradient(135deg, #f3f0fa 0%, #ede8fb 100%);
+        }
+        .reveal section.demo-slide.demo-rail .demo-rail-mark {
+            position: absolute;
+            left: 22px;
+            top: 210px;
+            color: rgba(255, 255, 255, 0.92);
+            font-family: 'Outfit', system-ui, sans-serif;
+            font-size: 1.05em;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+        }
+        .reveal section.demo-slide.demo-rail .demo-rail-content {
+            max-width: 760px;
+            margin: 210px 0 0 170px;
+            text-align: left;
+        }
+        .reveal section.demo-slide.demo-rail .demo-rail-rule {
+            width: 92px;
+            height: 6px;
+            border-radius: 999px;
+            margin: 0 0 22px 0;
+            background: linear-gradient(90deg, #6133ff 0%, #00DEA8 100%);
+        }
+
+        .reveal section.demo-slide.demo-card {
+            background: #f3f0fa;
+        }
+        .reveal section.demo-slide.demo-card::before {
+            content: "";
+            position: absolute;
+            inset: 72px 88px;
+            border-radius: 44px;
+            background:
+                radial-gradient(circle at 82% 18%, rgba(97, 51, 255, 0.06) 0%, rgba(97, 51, 255, 0) 30%),
+                radial-gradient(circle at 12% 86%, rgba(0, 222, 168, 0.05) 0%, rgba(0, 222, 168, 0) 28%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(210, 195, 253, 0.2) 100%);
+            filter: blur(1px);
+            z-index: 0;
+        }
+        .reveal section.demo-slide.demo-card .demo-card-shell {
+            position: relative;
+            z-index: 1;
+            width: min(920px, 90%);
+            padding: 38px 42px 42px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(180, 168, 229, 0.9);
+            box-shadow: 0 16px 44px rgba(42, 20, 122, 0.12);
+            text-align: left;
+            backdrop-filter: blur(8px);
+        }
+        .reveal section.demo-slide.demo-card .demo-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .reveal section.demo-slide.demo-card .demo-badge {
+            display: inline-block;
+            padding: 14px 26px;
+            border-radius: 999px;
+            background: #2a147a;
+            color: #ffffff;
+            font-family: 'Outfit', system-ui, sans-serif;
+            font-size: 0.72em;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+        .reveal section.demo-slide.demo-card .demo-card-accent {
+            width: 156px;
+            height: 10px;
+            border-radius: 999px;
+            margin-bottom: 22px;
+            background: linear-gradient(90deg, #6133ff 0%, #9C00FF 55%, #00DEA8 100%);
+        }
+
+        .reveal section.demo-slide.demo-window h2,
+        .reveal section.demo-slide.demo-rail h2,
+        .reveal section.demo-slide.demo-card h2 {
+            color: #2a147a;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+        .reveal section.demo-slide.demo-window p,
+        .reveal section.demo-slide.demo-rail p,
+        .reveal section.demo-slide.demo-card p {
+            color: #3a2578;
+        }
+        .reveal section.demo-slide.demo-window a,
+        .reveal section.demo-slide.demo-window a:hover,
+        .reveal section.demo-slide.demo-window a:visited,
+        .reveal section.demo-slide.demo-rail a,
+        .reveal section.demo-slide.demo-rail a:hover,
+        .reveal section.demo-slide.demo-rail a:visited,
+        .reveal section.demo-slide.demo-card a,
+        .reveal section.demo-slide.demo-card a:hover,
+        .reveal section.demo-slide.demo-card a:visited {
+            color: var(--posette-purple) !important;
+            text-decoration-color: var(--posette-purple) !important;
+        }
+        .reveal section.demo-slide.demo-window a strong,
+        .reveal section.demo-slide.demo-rail a strong,
+        .reveal section.demo-slide.demo-card a strong {
+            color: var(--posette-accent) !important;
+        }
+        .reveal section.demo-slide .demo-kicker {
+            margin: 0 0 12px 0;
+            color: #6133ff;
+            font-family: 'Outfit', system-ui, sans-serif;
+            font-size: 0.48em;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+		/* Blockquote: purple border, light card */
+		.reveal blockquote {
+			border-left: 5px solid var(--posette-purple);
+			background-color: var(--posette-card-bg);
+			color: var(--posette-text);
+			font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+			font-style: italic;
+			padding: 16px 20px;
+			border-radius: 8px;
+			text-align: left;
+			margin-left: 0;
+			margin-right: 0;
+		}
+
+		/* Table header accent */
+		.reveal table thead tr {
+			background-color: var(--posette-purple);
+			color: #fff;
+		}
+		.reveal table thead th {
+			color: #fff;
+			border-color: var(--posette-purple);
+			font-weight: 600;
+		}
+		.reveal table {
+			border-color: #d0d7de;
+			border-radius: 8px;
+			overflow: hidden;
+		}
+		.reveal table td {
+			border-color: #e1e5ea;
+		}
+		.reveal table tbody tr:nth-child(even) {
+			background-color: var(--posette-card-bg);
+		}
+
+		/* Code block: clean with subtle border */
+		.reveal pre {
+			border: 1px solid #d0d7de;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+			overflow: auto;
+			box-sizing: border-box;
+			margin-top: 4px;
+			margin-left: 0;
+			margin-right: 0;
+			width: 100%;
+		}
+		.reveal pre code.hljs {
+			background: #faf8ff;
+			border-radius: 8px;
+			font-size: 1.05em;
+			line-height: 1.35;
+		}
+
+		/* Slide number */
+		.reveal .slide-number {
+			color: #fff;
+			background: var(--posette-purple);
+			border-radius: 4px;
+		}
+
+		/* Body text */
+		.reveal p, .reveal li, .reveal td {
+			color: var(--posette-text);
+		}
+
+		/* Strong text accent */
+		.reveal strong {
+			color: var(--posette-accent);
+		}
+
+		/* Code inline */
+		.reveal code:not(.hljs) {
+			background: var(--posette-card-bg);
+			padding: 2px 6px;
+			border-radius: 4px;
+			font-size: 0.9em;
+			color: var(--posette-deep);
+		}
+		</style>
+	</head>
+    <body>
+    <div class="reveal">
+        <div class="slides">
+
+<!-- ==========================================
+     TITLE SLIDE
+     ========================================== -->
+<section class="heading-only">
+    <h1 style="font-size:1.8em;">An MCP for your Postgres DB</h1>
+    <br>
+    <h3>Pamela Fox</h3>
+    <aside class="notes">
+        Welcome! Today we're going to build MCP servers for PostgreSQL, progressively tightening what the LLM can do, from full SQL access to fully typed, parameterized tools.
+    </aside>
+</section>
+
+<!-- ==========================================
+     DEMO: Level 1 in VS Code
+     ========================================== -->
+<section class="demo-slide demo-card">
+    <div class="demo-card-shell">
+        <div class="demo-card-meta">
+            <span class="demo-badge">Live Demo</span>
+        </div>
+        <div class="demo-card-accent"></div>
+        <h2>Chatting with a Postgres DB</h2>
+        <p>Using GitHub Copilot agent + an MCP server to query bee observations in the Bay Area.</p>
+    </div>
+    <aside class="notes">
+        Demo: Open VS Code, show the MCP server (level1_freeform.py) running. Ask "What bees are active near San Francisco in March?" Show the tool calls. Then ask "delete the needs_id observations" to show the mutation risk.
+    </aside>
+</section>
+
+<!-- ==========================================
+     MCP OVERVIEW
+     ========================================== -->
+<section class="heading-only">
+    <img src="mcp_logo_white_transparent.svg" alt="MCP logo" style="width: 680px; max-width: 88%; margin: 0 0 22px 0; opacity: 0.98;">
+    <p style="font-size: 0.9em;"><a target="_blank" href="https://modelcontextprotocol.io/" style="color: rgba(255, 255, 255, 0.92);">modelcontextprotocol.io</a></p>
+</section>
+
+<section>
+    <h3>Before MCP</h3>
+    <p>Every integration with an AI agent had to be done individually:</p>
+    <svg viewBox="0 0 900 400" style="width: 100%; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="340" y="20" width="220" height="60" rx="12" fill="#edf4fc" stroke="#0078D4" stroke-width="2"/>
+        <text x="450" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#2b2b2b">🤖 AI agent</text>
+        <path d="M380 80 L380 120 L130 120 L130 250" fill="none" stroke="#2b2b2b" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+        <line x1="450" y1="80" x2="450" y2="250" stroke="#2b2b2b" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+        <path d="M520 80 L520 120 L770 120 L770 250" fill="none" stroke="#2b2b2b" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+        <path d="M380 80 L380 120 L130 120 L130 232" fill="none" stroke="#50e6ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.9">
+            <animate attributeName="stroke-dashoffset" from="0" to="-140" dur="4s" repeatCount="indefinite"/>
+        </path>
+        <line x1="450" y1="80" x2="450" y2="232" stroke="#50e6ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.9">
+            <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="3.2s" repeatCount="indefinite"/>
+        </line>
+        <path d="M520 80 L520 120 L770 120 L770 232" fill="none" stroke="#50e6ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.9">
+            <animate attributeName="stroke-dashoffset" from="0" to="-140" dur="3.6s" repeatCount="indefinite"/>
+        </path>
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#2b2b2b"/>
+            </marker>
+        </defs>
+        <text x="130" y="290" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#2b2b2b">🗄️ Database</text>
+        <text x="450" y="290" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#2b2b2b">💬 Slack</text>
+        <text x="770" y="290" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#2b2b2b">🐙 GitHub</text>
+        <rect x="213" y="107" width="84" height="26" rx="13" fill="#fff" stroke="#ccc" stroke-width="1"/>
+        <text x="255" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#555" font-weight="600">REST API</text>
+        <rect x="418" y="133" width="64" height="26" rx="13" fill="#fff" stroke="#ccc" stroke-width="1"/>
+        <text x="450" y="150" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#555" font-weight="600">SDK</text>
+        <rect x="613" y="107" width="64" height="26" rx="13" fill="#fff" stroke="#ccc" stroke-width="1"/>
+        <text x="645" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#555" font-weight="600">CLI</text>
+    </svg>
+</section>
+
+<section>
+    <h3>Model Context Protocol</h3>
+    <p>An open protocol that defines how AI apps get context from external tools and data sources.</p>
+    <svg viewBox="0 0 900 320" style="width: 100%; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="340" y="20" width="220" height="60" rx="12" fill="#edf4fc" stroke="#0078D4" stroke-width="2"/>
+        <text x="450" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#2b2b2b">🤖 AI agent</text>
+        <defs>
+            <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#2b2b2b"/>
+            </marker>
+        </defs>
+        <path d="M380 80 L380 120 L130 120 L130 210" fill="none" stroke="#2b2b2b" stroke-width="2.5" marker-end="url(#arrowhead2)"/>
+        <line x1="450" y1="80" x2="450" y2="210" stroke="#2b2b2b" stroke-width="2.5" marker-end="url(#arrowhead2)"/>
+        <path d="M520 80 L520 120 L770 120 L770 210" fill="none" stroke="#2b2b2b" stroke-width="2.5" marker-end="url(#arrowhead2)"/>
+        <path d="M380 80 L380 120 L130 120 L130 192" fill="none" stroke="#50e6ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.9">
+            <animate attributeName="stroke-dashoffset" from="0" to="-140" dur="4s" repeatCount="indefinite"/>
+        </path>
+        <line x1="450" y1="80" x2="450" y2="192" stroke="#50e6ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.9">
+            <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="3.2s" repeatCount="indefinite"/>
+        </line>
+        <path d="M520 80 L520 120 L770 120 L770 192" fill="none" stroke="#50e6ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.9">
+            <animate attributeName="stroke-dashoffset" from="0" to="-140" dur="3.6s" repeatCount="indefinite"/>
+        </path>
+        <text x="130" y="250" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#2b2b2b">🗄️ Database</text>
+        <text x="450" y="250" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#2b2b2b">💬 Slack</text>
+        <text x="770" y="250" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#2b2b2b">🐙 GitHub</text>
+        <g transform="translate(255 120)"><animate attributeName="opacity" values="1;0.88;1" dur="2.2s" repeatCount="indefinite"/><rect x="-30" y="-13" width="60" height="26" rx="13" fill="#fff" stroke="#0078D4" stroke-width="1.8"/><text x="0" y="5" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#0078D4" font-weight="700">MCP</text></g>
+        <g transform="translate(450 146)"><animate attributeName="opacity" values="1;0.88;1" dur="2.2s" begin="0.35s" repeatCount="indefinite"/><rect x="-30" y="-13" width="60" height="26" rx="13" fill="#fff" stroke="#0078D4" stroke-width="1.8"/><text x="0" y="5" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#0078D4" font-weight="700">MCP</text></g>
+        <g transform="translate(645 120)"><animate attributeName="opacity" values="1;0.88;1" dur="2.2s" begin="0.7s" repeatCount="indefinite"/><rect x="-30" y="-13" width="60" height="26" rx="13" fill="#fff" stroke="#0078D4" stroke-width="1.8"/><text x="0" y="5" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#0078D4" font-weight="700">MCP</text></g>
+    </svg>
+</section>
+
+<!-- ==========================================
+     BUILDING MCP SERVERS FOR DB
+     ========================================== -->
+<section class="heading-only">
+    <h2>Building MCP servers<br>for a Postgres DB</h2>
+</section>
+
+<section>
+    <h3>The progression</h3>
+    <svg viewBox="0 0 1000 340" style="width: 100%; margin: 20px auto 0; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <!-- Arrow body -->
+        <defs>
+            <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ff6b6b"/>
+                <stop offset="50%" stop-color="#ffd43b"/>
+                <stop offset="100%" stop-color="#51cf66"/>
+            </linearGradient>
+        </defs>
+        <!-- Double-ended arrow shape -->
+        <polygon points="80,130 920,130 920,90 980,170 920,250 920,210 80,210 80,250 20,170 80,90"
+                 fill="url(#arrowGrad)" opacity="0.15"/>
+        <polygon points="80,130 920,130 920,90 980,170 920,250 920,210 80,210 80,250 20,170 80,90"
+                 fill="none" stroke="url(#arrowGrad)" stroke-width="3" opacity="0.6"/>
+
+        <!-- Left label -->
+        <text x="120" y="120" font-family="Outfit, sans-serif" font-size="22" font-weight="800" fill="#c92a2a" text-anchor="start">EXPLORATORY</text>
+        <text x="120" y="260" font-family="Inter, sans-serif" font-size="17" fill="#555" text-anchor="start">Free-form SQL</text>
+
+        <!-- Center markers -->
+        <line x1="340" y1="140" x2="340" y2="200" stroke="#ccc" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="340" y="260" font-family="Inter, sans-serif" font-size="15" fill="#888" text-anchor="middle">Read-only SELECT</text>
+
+        <line x1="560" y1="140" x2="560" y2="200" stroke="#ccc" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="560" y="260" font-family="Inter, sans-serif" font-size="15" fill="#888" text-anchor="middle">Scoped WHERE</text>
+
+        <!-- Right label -->
+        <text x="880" y="120" font-family="Outfit, sans-serif" font-size="22" font-weight="800" fill="#2b8a3e" text-anchor="end">OPERATIONAL</text>
+        <text x="880" y="260" font-family="Inter, sans-serif" font-size="17" fill="#555" text-anchor="end">Fully typed tools</text>
+
+        <!-- Center text -->
+        <text x="120" y="178" font-family="Outfit, sans-serif" font-size="19" font-weight="700" fill="#2a147a" text-anchor="start">trust the LLM entirely</text>
+        <text x="880" y="178" font-family="Outfit, sans-serif" font-size="19" font-weight="700" fill="#2a147a" text-anchor="end">remove SQL from the equation</text>
+    </svg>
+    <aside class="notes">
+        This is the arc of the talk. We start with full trust in the LLM (it writes every query), then progressively constrain the surface until SQL is gone entirely. Level 3 (scoped WHERE) is a cautionary middle ground; we'll mention it briefly but skip the deep dive. The Arcade blog calls this "exploratory to operational."
+    </aside>
+</section>
+
+<section class="heading-only">
+    <h2>Free-form SQL</h2>
+    <p style="font-size:0.85em;">Maximum flexibility, maximum risk</p>
+</section>
+
+<section>
+    <h3>Free-form SQL: Schema and SQL exec tools</h3>
+    <pre><code class="language-python" data-trim data-noescape>
+@mcp.tool()
+async def get_db_schema() -> str:
+    """Return the database schema for all public tables."""
+    engine = await _get_engine()
+    return await get_db_schema_text(engine)
+
+@mcp.tool()
+async def execute_sql(sql: str) -> str:
+    """Execute a SQL query against the database and return results.
+    You can run any SQL statement including SELECT, INSERT, UPDATE, DELETE."""
+    engine = await _get_engine()
+    async with engine.connect() as conn:
+        result = await conn.execute(text(sql))
+        ...
+    </code></pre>
+    <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level1_freeform.py">servers/level1_freeform.py</a></p>
+</section>
+
+<section>
+    <h3>🥺 Problem: Schema bloat</h3>
+    <p style="font-size:0.8em;"><code>get_db_schema()</code> dumps <em>everything</em>: 5 tables, 60+ columns:</p>
+    <div style="column-count: 3; column-gap: 18px; column-rule: 1px solid #e0d8f8; background: #faf8ff; border: 1px solid #d0d7de; border-radius: 8px; padding: 0px 16px; font-family: monospace; font-size: 0.45em; line-height: 1.35; white-space: pre; color: #190649;">
+<span style="color:#6133ff;font-weight:700;">TABLE geography_columns</span>
+  f_table_catalog name NULL
+  f_table_schema name NULL
+  f_table_name name NULL
+  f_geography_column name NULL
+  coord_dimension integer NULL
+  srid integer NULL
+  type text NULL
+
+<span style="color:#6133ff;font-weight:700;">TABLE geometry_columns</span>
+  f_table_catalog varchar NULL
+  f_table_schema name NULL
+  f_table_name name NULL
+  f_geometry_column name NULL
+  coord_dimension integer NULL
+  srid integer NULL
+  type varchar NULL
+
+<span style="color:#6133ff;font-weight:700;">TABLE historical_observations</span>
+  observation_id integer NOT NULL
+  taxon_id integer NULL
+  obs_date varchar NULL
+  obs_year integer NULL
+  latitude real NULL
+  longitude real NULL
+  verified boolean NULL
+
+<span style="color:#6133ff;font-weight:700;">TABLE observations</span>
+  observation_id integer NOT NULL
+  taxon_id integer NULL
+  observed_date date NULL
+  observed_year integer NULL
+  observed_month integer NULL
+  latitude double precision NULL
+  longitude double precision NULL
+  geom USER-DEFINED NULL
+  coordinates_obscured boolean NULL
+  positional_accuracy integer NULL
+  quality_grade text NULL
+  license text NULL
+  county text NULL
+  captive_cultivated boolean NULL
+
+<span style="color:#6133ff;font-weight:700;">TABLE spatial_ref_sys</span>
+  srid integer NOT NULL
+  auth_name varchar NULL
+  auth_srid integer NULL
+  srtext varchar NULL
+  proj4text varchar NULL
+
+<span style="color:#6133ff;font-weight:700;">TABLE species</span>
+  taxon_id integer NOT NULL
+  scientific_name text NOT NULL
+  common_name text NULL
+  family text NULL
+  subfamily text NULL
+  tribe text NULL
+  genus text NULL
+  species_epithet text NULL
+  rank text NULL
+  total_observations integer NULL
+  phenology_counts ARRAY NULL
+  phenology_normalized ARRAY NULL
+  peak_month integer NULL
+  window_start integer NULL
+  window_end integer NULL
+  seasonality_index float NULL
+  insufficient_data boolean NULL
+  peak_prominence float NULL
+  total_observations_all integer NULL
+  phenology_counts_all ARRAY NULL
+  phenology_normalized_all ARRAY NULL
+  peak_month_all integer NULL
+  window_start_all integer NULL
+  window_end_all integer NULL
+  seasonality_index_all float NULL
+  insufficient_data_all boolean NULL
+  peak_prominence_all float NULL</div>
+</section>
+
+<section>
+    <h3>Progressive schema discovery</h3>
+    <!--<p>Provide tools for incremental schema exploration:</p>-->
+    <pre style="height:720px;"><code class="language-python" data-trim data-noescape >
+@mcp.tool()
+async def list_tables() -> str:
+    """List all tables in the public schema."""
+    async with engine.connect() as conn:
+        result = await conn.execute(text(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"))
+        return "\n".join(row[0] for row in result.fetchall())
+
+        @mcp.tool()
+async def describe_table(table_name: str) -> str:
+    """Describe the columns of a specific table."""
+    async with engine.connect() as conn:
+        result = await conn.execute(text(
+            "SELECT column_name, data_type, is_nullable "
+            "FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = :table_name "
+            "ORDER BY ordinal_position"
+        ), {"table_name": table_name})
+        rows = result.fetchall()
+    lines = [f"TABLE {table_name}:"]
+    for column_name, data_type in rows:
+        lines.append(f"  {column_name} {data_type}")
+    return "\n".join(lines)
+    </code></pre>
+    <aside class="speaker-notes">Forces a <strong>look → plan → query</strong> workflow. Less context bloat.</aside>
+</section>
+
+<section>
+    <h3>🤕 Problem: Accidental mutations</h3>
+    <p>An agent will happily modify your data- and you may not want that.</p>
+    <blockquote style="font-size:0.8em;">
+        "How many observations have quality_grade = 'needs_id'?<br>
+        We may want to delete those, they're not as useful."
+    </blockquote>
+    <div class="fragment">
+    <p style="font-size:0.8em; margin-bottom: 4px;">Tool calls:</p>
+    <pre style="margin-top: 0;"><code class="language-text" data-trim>
+execute_sql(sql="SELECT COUNT(*) FROM observations WHERE quality_grade = 'needs_id'")
+→ 18,633
+
+execute_sql(sql="DELETE FROM observations WHERE quality_grade = 'needs_id'")
+→ Statement executed. Rows affected: 18633
+    </code></pre>
+    </div>
+    <p class="fragment" style="font-size:0.85em;"><strong>18,633 rows deleted.</strong> No hesitation, no confirmation.</p>
+    <aside class="notes">
+        This was tested with gpt-4.1 via the Agent Framework. The LLM didn't refuse; it followed the user's intent exactly. The problem isn't the model, it's the tool surface.
+    </aside>
+</section>
+
+<!-- ==========================================
+     LEVEL 2: READ-ONLY SQL
+     ========================================== -->
+<section class="heading-only">
+    <h2>Read-only SQL</h2>
+    <p style="font-size:0.85em;">What if we only allow SELECT?</p>
+</section>
+
+<section>
+    <h3>Read-only SQL execution tool</h3>
+    <pre style="height:570px;"><code class="language-python" data-trim data-noescape>
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), timeout=30.0)
+async def execute_readonly_sql(sql: str) -> dict:
+    """Execute a read-only SQL query against the database.
+    Only SELECT statements are allowed. Non-SELECT rejected.
+    Results capped at 100 rows."""
+    try:
+        validated_sql = _validate_readonly_sql(sql)
+    except ValueError as e:
+        raise ToolError(str(e))
+
+    engine = await _get_engine()
+    async with engine.connect() as conn:
+        result = await conn.execute(text(validated_sql))
+        columns = list(result.keys())
+        rows = result.fetchmany(MAX_LIMIT)  # Cap rows regardless of LIMIT
+        return {"columns": columns,
+                "rows": [[str(v) for v in row] for row in rows]}
+    </code></pre>
+    <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level2_readonly.py">servers/level2_readonly.py</a></p>
+</section>
+
+<section>
+    <h3><code>readOnlyHint</code> is a hint, not a guarantee</h3>
+    <pre><code class="language-python" data-trim>
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    </code></pre>
+    <div style="display: flex; gap: 16px; margin-top: 12px; font-size: 0.7em;">
+        <div style="flex: 1; background: #e8f5e9; border: 2px solid #66bb6a; border-radius: 14px; padding: 14px 18px;">
+            <div style="font-weight: 700; color: #2e7d32; margin-bottom: 8px;">✅ What it does</div>
+            <ul style="margin: 0; padding-left: 18px;">
+                <li>Tells the client this tool won't modify data</li>
+                <li>Client may skip confirmation prompts</li>
+                <li>Helps clients build safer UX</li>
+            </ul>
+        </div>
+        <div style="flex: 1; background: #fce4ec; border: 2px solid #ef5350; border-radius: 14px; padding: 14px 18px;">
+            <div style="font-weight: 700; color: #c62828; margin-bottom: 8px;">❌ Limitations</div>
+            <ul style="margin: 0; padding-left: 18px;">
+                <li>Does not enforce read-only on the server</li>
+                <li>An untrusted server can lie about it</li>
+                <li>Does not prevent SQL injection or mutations</li>
+            </ul>
+        </div>
+    </div>
+    <p style="font-size:0.75em; margin-top: 12px;"><strong>Annotations are hints, not contracts.</strong> Actual safety comes from the tool implementation, DB permissions, and parsing.</p>
+    <p style="font-size:0.65em;">📖 <a target="_blank" href="https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/">MCP Blog: Tool Annotations as Risk Vocabulary</a></p>
+</section>
+
+<section>
+    <h3>Read-only validation with AST-parsing</h3>
+    
+    <pre><code class="language-python" data-trim data-noescape>
+def _validate_readonly_sql(sql: str) -> str:
+    try:
+        stmts = pglast.parse_sql(sql)
+    except pglast.parser.ParseError as e:
+        raise ValueError(f"SQL parse error: {e}")
+    
+    if len(stmts) != 1:
+        raise ValueError("Only single statements are allowed")
+    if (stmt_type := type(stmts[0].stmt).__name__) != "SelectStmt":
+        raise ValueError(f"Only SELECT allowed, got {stmt_type}")
+    return sql
+    </code></pre>
+    <table style="font-size:0.6em; margin-top: 8px; width: 100%;">
+        <thead><tr><th>Input</th><th>Result</th></tr></thead>
+        <tbody>
+            <tr><td><code>NOT VALID SQL !!!</code></td><td>❌ "SQL parse error: syntax error"</td></tr>
+            <tr><td><code>SELECT 1; DELETE FROM observations</code></td><td>❌ "Only single statements are allowed"</td></tr>
+            <tr><td><code>DELETE FROM observations</code></td><td>❌ "Only SELECT allowed, got DeleteStmt"</td></tr>
+            <tr><td><code>SELECT * FROM observations</code></td><td>✅ Passes</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<section>
+    <h3>DB-level read-only enforcement</h3>
+    <pre><code class="language-sql" data-trim>
+-- Quick fix: read-only at the connection level
+SET default_transaction_read_only = ON;
+
+-- Production fix: dedicated read-only role
+CREATE ROLE mcp_readonly;
+GRANT CONNECT ON DATABASE bees TO mcp_readonly;
+GRANT USAGE ON SCHEMA public TO mcp_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
+    </code></pre>
+    <table style="font-size:0.55em; margin-top: 8px; width: 100%;">
+        <thead><tr><th>SQL</th><th>Result</th></tr></thead>
+        <tbody>
+            <tr><td><code>WITH d AS (DELETE ...) SELECT * FROM d</code></td><td>❌ "cannot execute DELETE in a read-only transaction"</td></tr>
+            <tr><td><code>INSERT INTO observations ...</code></td><td>❌ "cannot execute INSERT in a read-only transaction"</td></tr>
+            <tr><td><code>DROP TABLE observations</code></td><td>❌ "cannot execute DROP TABLE in a read-only transaction"</td></tr>
+            <tr><td><code>SELECT * FROM observations LIMIT 10</code></td><td>✅ Passes</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<section>
+    <h3>How many layers to make SQL safe?</h3>
+    <table style="font-size:0.44em; width: 100%;">
+        <thead><tr><th>SQL</th><th>→ Parser</th><th>→ Read-only transaction</th><th>→ Least-privilege role</th><th>→ Timeout</th></tr></thead>
+        <tbody>
+            <tr class="fragment" data-fragment-index="0"><td><code>DELETE FROM observations</code></td><td>❌ Blocked</td><td>❌ Blocked</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="0"><td><code>INSERT INTO observations ...</code></td><td>❌ Blocked</td><td>❌ Blocked</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="0"><td><code>SELECT 1; DROP TABLE species</code></td><td>❌ Blocked</td><td>❌ Blocked</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="1"><td><code>WITH d AS (DELETE ...) SELECT * FROM d</code></td><td>✅ Passes</td><td>❌ Blocked</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="1"><td><code>UPDATE inside WITH clause</code></td><td>✅ Passes</td><td>❌ Blocked</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="2" style="background-color: #fff0f0;"><td><code>SELECT pg_terminate_backend(pid)</code></td><td>✅ Passes</td><td>✅ Passes</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="2" style="background-color: #fff0f0;"><td><code>SELECT pg_read_file('/etc/passwd')</code></td><td>✅ Passes</td><td>✅ Passes</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="2" style="background-color: #fff0f0;"><td><code>SELECT pg_reload_conf()</code></td><td>✅ Passes</td><td>✅ Passes</td><td>❌ Blocked</td><td></td></tr>
+            <tr class="fragment" data-fragment-index="3"><td><code>SELECT pg_sleep(60)</code></td><td>✅ Passes</td><td>✅ Passes</td><td>✅ Passes</td><td>❌ Killed at 30s</td></tr>
+            <tr class="fragment" data-fragment-index="3"><td><code>SELECT * FROM species CROSS JOIN observations</code></td><td>✅ Passes</td><td>✅ Passes</td><td>✅ Passes</td><td>❌ Killed at 30s</td></tr>
+        </tbody>
+    </table>
+    <p class="fragment" data-fragment-index="4" style="font-size:0.75em;">Four layers, and everything is blocked.<br>
+    <strong>Or could we just... not expose SQL at all?</strong></p>
+</section>
+
+<!-- ==========================================
+     LEVEL 4: FULLY TYPED
+     ========================================== -->
+<section class="heading-only">
+    <h2>Fully typed tools</h2>
+    <p style="font-size:0.85em;">No SQL surface. Server builds all queries.</p>
+</section>
+
+<section>
+    <h3>Fully typed table-specific tools</h3>
+    <pre style="height:515px"><code class="language-python" data-trim data-noescape>
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def search_species(q: str, limit: int = 10) -> list[SpeciesResult]:
+    """Search bee species by scientific or common name.
+    Use to resolve a name to a taxon_id before calling other tools."""
+    sql = text("""
+        SELECT taxon_id, scientific_name, common_name, family, genus
+        FROM species
+        WHERE to_tsvector('simple',
+              coalesce(scientific_name,'') || ' ' || coalesce(common_name,''))
+              @@ plainto_tsquery('simple', :q)
+        ORDER BY scientific_name ASC
+        LIMIT :limit""")
+    async with engine.connect() as conn:
+        result = await conn.execute(sql, {"q": q, "limit": min(limit, 50)})
+        return [SpeciesResult(...) for row in result.fetchall()]
+    </code></pre>
+    🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level4_typed.py">servers/level4_typed.py</a></p>
+</section>
+
+<section>
+    <h3>Multi-step tool chaining</h3>
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.72em; max-width: 95%;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px; max-width: 500px;">
+                "Find leafcutter bees near Berkeley"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #fff; border: 2px solid #6133ff; border-radius: 14px; padding: 8px 14px;">
+                <code>search_species(q="leafcutter bee")</code>
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #faf8ff; border: 1px solid #d0d7de; border-radius: 14px; padding: 8px 14px; font-family: monospace; font-size: 0.9em;">
+                [{taxon_id: 52784, scientific_name: "Megachile", common_name: "Leafcutter Bees"}]
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #fff; border: 2px solid #6133ff; border-radius: 14px; padding: 8px 14px;">
+                <code>search_observations(lat=37.87, lon=-122.27, taxon_id=52784, ...)</code>
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #faf8ff; border: 1px solid #d0d7de; border-radius: 14px; padding: 8px 14px; font-family: monospace; font-size: 0.9em;">
+                [{observation_id: 98231, observed_date: "2025-08-12", latitude: 37.88, ...}, ...]
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px; max-width: 600px;">
+                "I found 12 leafcutter bee observations near Berkeley, mostly in August and September..."
+            </div>
+        </div>
+    </div>
+    <aside class="notes">
+        The tool names and parameter names (search_species, taxon_id) are enough to guide this workflow, even with minimal descriptions.
+    </aside>
+</section>
+
+<section>
+    <h3>Destructive tools with <code>destructiveHint</code></h3>
+    <pre style="height:510px;"><code class="language-python" data-trim data-noescape>
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
+async def delete_observation(observation_id: int) -> str:
+    """Delete a bee observation by its observation_id.
+    This permanently removes the observation record."""
+    session = await create_session(engine)
+    result = await session.execute(text("""
+        SELECT o.observation_id, s.scientific_name, o.observed_date
+        FROM observations o
+        LEFT JOIN species s ON o.taxon_id = s.taxon_id
+        WHERE o.observation_id = :oid"""), {"oid": observation_id})
+    row = result.fetchone()
+    await session.execute(text("DELETE FROM observations WHERE observation_id = :oid"),
+        {"oid": observation_id})
+    await session.commit()
+    return f"Deleted observation {observation_id}"
+    </code></pre>
+    <p style="font-size:0.75em;"><code>destructiveHint: True</code> tells the client to prompt the user before calling.</p>
+</section>
+
+<section>
+    <h3>Destructive tool flow</h3>
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.68em; max-width: 95%;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Delete observation 98231"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #fff; border: 2px solid #6133ff; border-radius: 14px; padding: 8px 14px;">
+                Wants to call <code>delete_observation(observation_id=98231)</code>
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">💻</span>
+            <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 14px; padding: 8px 14px;">
+                <strong>Client sees <code>destructiveHint: True</code></strong><br>
+                Shows confirmation prompt to user
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Yes, delete it"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #faf8ff; border: 1px solid #d0d7de; border-radius: 14px; padding: 8px 14px; font-family: monospace; font-size: 0.9em;">
+                "Deleted observation 98231"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Done! I've deleted observation 98231."
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==========================================
+     DEMO: Level 4
+     ========================================== -->
+<section class="demo-slide demo-card">
+    <div class="demo-card-shell">
+        <div class="demo-card-meta">
+            <span class="demo-badge">Demo</span>
+        </div>
+        <div class="demo-card-accent"></div>
+        <h2>Level 4 in action</h2>
+        <p>Same query, typed tools: multi-step chaining, no SQL surface.</p>
+    </div>
+</section>
+
+<!-- ==========================================
+     ELICITATION
+     ========================================== -->
+<section class="heading-only">
+    <h2>Elicitation</h2>
+    <p style="font-size:0.85em;">Data-aware confirmations from the server</p>
+</section>
+
+
+<section>
+    <h3>Tool elicitations</h3>
+    <p>By default, an elicitation asks for a confirmation (approve/reject):</p>
+    <pre style="height:545px;"><code class="language-python" data-trim data-noescape>
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
+async def delete_observation(ctx: Context, observation_id: int) -> str:
+    """Delete a bee observation."""
+    row = ...  # look up the record
+    confirmation = await ctx.elicit(
+        f"You're about to permanently delete: Observation #{row.observation_id} "
+        f"  {row.scientific_name} on {row.observed_date} - Proceed?",
+        response_type=None,  # Just accept/decline, no data needed
+    )
+    if confirmation.action != "accept":
+        return "Deletion cancelled."
+    await session.execute(
+        text("DELETE FROM observations WHERE observation_id = :oid"),
+        {"oid": observation_id})
+    await session.commit()
+    return f"Deleted observation #{observation_id}"
+    </code></pre>
+    <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level5_elicitation.py">servers/level5_elicitation.py</a></p>
+</section>
+
+<section>
+    <h3>Elicitation in action</h3>
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.68em; max-width: 95%;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Delete the sweat bee observation from June 15th"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #fff; border: 2px solid #6133ff; border-radius: 14px; padding: 8px 14px;">
+                <code>delete_observation(observation_id=48291)</code>
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 14px; padding: 10px 14px;">
+                <strong>Server elicits:</strong><br>
+                You're about to permanently delete:<br>
+                &nbsp;&nbsp;Observation #48291, <em>Bombus vosnesenskii</em><br>
+                &nbsp;&nbsp;Observed 2025-06-15 at (37.77, -122.42) - Proceed?
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Yes, delete it"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #faf8ff; border: 1px solid #d0d7de; border-radius: 14px; padding: 8px 14px; font-family: monospace; font-size: 0.9em;">
+                "Deleted observation #48291: Bombus vosnesenskii on 2025-06-15"
+            </div>
+        </div>
+    </div>
+    <p class="fragment" style="font-size:0.7em; margin-top: 8px;"><strong>destructiveHint</strong> = generic prompt from client.<br><strong>elicitation</strong> = server can provide even more details on what will be deleted.</p>
+</section>
+
+<section>
+    <h3>Tool elicitation with custom prompt</h3>
+    <pre style="height:600px;"><code class="language-python" data-trim data-noescape>
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def search_observations(
+    ctx: Context,
+    lat: float, lon: float, start_date: date, end_date: date,
+    radius_km: float = 25, taxon_id: int | None = None,
+) -> list[ObservationResult] | str:
+    """Search recent bee observations (2020-present)."""
+    if radius_km > RADIUS_LIMIT:
+        area_km2 = int(math.pi * radius_km**2)
+        result = await ctx.elicit(
+            f"That radius ({radius_km} km) covers ~{area_km2:,} km². "
+            f"Narrow to {RADIUS_LIMIT} km instead?",
+            response_type=["yes, narrow it", "no, keep the full radius"])
+        if result.action == "cancel":
+            return "Search cancelled."
+        if result.data == "yes, narrow it":
+            radius_km = RADIUS_LIMIT
+    # ... proceed with search
+    </code></pre>
+    <aside class="notes">
+        Elicitation fires on <strong>edge cases and safety boundaries</strong>, not routine workflow.
+        Note: Elicitation support is inconsistent across MCP clients. Frame as aspirational. destructiveHint annotations are the more portable safety layer.
+    </aside>
+</section>
+
+<section>
+    <h3>Boundary violation in action</h3>
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.68em; max-width: 95%;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Show me all bee observations within 200km of San Francisco"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 40px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🤖</span>
+            <div style="background: #fff; border: 2px solid #6133ff; border-radius: 14px; padding: 8px 14px;">
+                <code>search_observations(lat=37.77, lon=-122.42, radius_km=200, ...)</code>
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 14px; padding: 10px 14px;">
+                <strong>Server elicits:</strong><br>
+                That radius (200 km) covers ~125,664 km².<br>
+                Narrow to 50 km instead?<br>
+                <span style="color: #6133ff;">[yes, narrow it]</span> &nbsp; <span style="color: #999;">[no, keep the full radius]</span>
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+            <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+                "Yes, narrow it"
+            </div>
+        </div>
+        <div class="fragment" style="display: flex; align-items: flex-start; gap: 10px; margin-left: 80px;">
+            <span style="font-size: 1.4em; flex-shrink: 0;">🔧</span>
+            <div style="background: #faf8ff; border: 1px solid #d0d7de; border-radius: 14px; padding: 8px 14px; font-family: monospace; font-size: 0.9em;">
+                [{observation_id: 12345, scientific_name: "Bombus vosnesenskii", ...}, ...]
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ==========================================
+     TOOL SELECTION
+     ========================================== -->
+<section class="heading-only">
+    <h2>Tool selection</h2>
+    <p style="font-size:0.85em;">Will the LLM route correctly across multiple tables?</p>
+</section>
+
+<section>
+    <h3>Two tools: current data vs. historical data</h3>
+    <pre style="height:510px;"><code class="language-python" data-trim data-noescape>
+async def search_observations(
+    lat: float, lon: float, start_date: date, end_date: date,
+    radius_km: float = 25, taxon_id: int | None = None,
+) -> list[ObservationResult]:
+    """Search recent bee observations (2020-present).
+    Use search_historical_observations for records before 2020.
+    For comprehensive queries spanning all years, call both tools."""
+
+async def search_historical_observations(
+    lat: float, lon: float, start_year: int, end_year: int,
+    radius_km: float = 25, taxon_id: int | None = None,
+) -> list[HistoricalObservationResult]:
+    """Search historical bee observations (before 2020).
+    Use search_observations for records from 2020 onward.
+    For comprehensive queries spanning all years, call both tools."""
+    </code></pre>
+    <p style="font-size:0.8em;">Both tool descriptions explicitly say "call both" when needed.</p>
+</section>
+
+<section>
+    <h3>Results: queries that need both tools</h3>
+    <table style="font-size:0.75em; width: 100%">
+        <thead><tr><th>Query</th><th>Called both?</th></tr></thead>
+        <tbody>
+            <tr class="fragment" data-fragment-index="0" style="background-color: #e6ffe6;"><td>"<strong>Past and present</strong> bumble bee observations"</td><td>✅ both</td></tr>
+            <tr class="fragment" data-fragment-index="0" style="background-color: #e6ffe6;"><td>"Compare <strong>2010 vs 2024</strong>"</td><td>✅ both</td></tr>
+            <tr class="fragment" data-fragment-index="0" style="background-color: #e6ffe6;"><td>"More species in <strong>2015 or 2024</strong>?"</td><td>✅ both</td></tr>
+            <tr class="fragment" data-fragment-index="1"><td>"Any leafcutter bees <strong>ever</strong> seen near SF?"</td><td>❌ recent only</td></tr>
+            <tr class="fragment" data-fragment-index="1"><td>"Include <strong>all years</strong>"</td><td>❌ recent only</td></tr>
+            <tr class="fragment" data-fragment-index="1"><td>"<strong>All records, any year</strong>"</td><td>❌ recent only</td></tr>
+            <tr class="fragment" data-fragment-index="2"><td>"<strong>Full history</strong> of observations"</td><td>❌ historical only</td></tr>
+            <tr class="fragment" data-fragment-index="2"><td>"Have honey bees <strong>always</strong> been common?"</td><td>❌ historical only</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<section>
+    <h3>Don't make the LLM choose</h3>
+    <p>😢 The description's suggestion to "call both tools" didn't work.<br>The data split is too ambiguous.</p>
+    <p>🧰 <strong>Fix:</strong> Don't expose the table split to the LLM.</p>
+    
+    <p>Options:</p>
+    <ul>
+        <li>Add a <code>search_all_observations</code> meta-tool that queries both tables internally</li>
+        <li>Return a hint in the result: <em>"This only covers 2020+. For older records, also call search_historical_observations."</em></li>
+        <li>Keep everything in one table</li>
+    </ul>
+</section>
+
+<!-- ==========================================
+     DECISION FRAMEWORK
+     ========================================== -->
+<section>
+    <h3>Which approach should you use?</h3>
+    <svg viewBox="0 0 1000 380" style="width: 100%; margin: 10px auto 0; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="arrowGrad2" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ff6b6b"/>
+                <stop offset="50%" stop-color="#ffd43b"/>
+                <stop offset="100%" stop-color="#51cf66"/>
+            </linearGradient>
+        </defs>
+        <!-- Arrow shape -->
+        <polygon points="80,110 920,110 920,70 980,150 920,230 920,190 80,190 80,230 20,150 80,70"
+                 fill="url(#arrowGrad2)" opacity="0.15"/>
+        <polygon points="80,110 920,110 920,70 980,150 920,230 920,190 80,190 80,230 20,150 80,70"
+                 fill="none" stroke="url(#arrowGrad2)" stroke-width="3" opacity="0.6"/>
+
+        <!-- Left: Exploratory -->
+        <text x="120" y="100" font-family="Outfit, sans-serif" font-size="20" font-weight="800" fill="#c92a2a">EXPLORATORY</text>
+        <text x="120" y="155" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#2a147a">Free-form SQL</text>
+        <text x="120" y="175" font-family="Inter, sans-serif" font-size="14" fill="#555">Internal prototyping</text>
+        <text x="120" y="250" font-family="Inter, sans-serif" font-size="14" fill="#555">Schema discovery tools</text>
+
+        <!-- Middle: Read-only -->
+        <text x="400" y="155" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#2a147a" text-anchor="middle">Read-only SQL</text>
+        <text x="400" y="175" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="middle">Data analytics</text>
+        <text x="400" y="250" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="middle">Parser + timeout + fetchmany</text>
+
+        <!-- Right: Operational -->
+        <text x="880" y="100" font-family="Outfit, sans-serif" font-size="20" font-weight="800" fill="#2b8a3e" text-anchor="end">OPERATIONAL</text>
+        <text x="880" y="155" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#2a147a" text-anchor="end">Fully typed tools</text>
+        <text x="880" y="175" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="end">Production / user-facing</text>
+        <text x="880" y="250" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="end">+ elicitation for destructive ops</text>
+
+        <!-- Bottom bar: Always -->
+        <rect x="100" y="295" width="800" height="44" rx="22" fill="#2a147a" opacity="0.9"/>
+        <text x="500" y="323" font-family="Outfit, sans-serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">Always: DB-level permissions (least-privilege role + read-only transactions)</text>
+    </svg>
+</section>
+
+<!-- ==========================================
+     THANK YOU
+     ========================================== -->
+<section>
+    <h3>Thank you!</h3>
+    <p>Slides:
+        <br><a target="_blank" href="https://pamelafox.github.io/mcp-for-postgres-db-demo/">pamelafox.github.io/mcp-for-postgres-db-demo</a>
+    </p>
+    <p>Code:
+        <br><a target="_blank" href="https://www.github.com/pamelafox/mcp-for-postgres-db-demo/">github.com/pamelafox/mcp-for-postgres-db-demo</a>
+    </p>
+    <p>Questions? Find me online at:</p>
+    <table style="width:60%; float: left; font-size:28px;">
+        <tbody>
+        <tr><td>Twitter/X</td><td><a target="_blank" href="https://twitter.com/pamelafox">@pamelafox</a></td></tr>
+        <tr><td>Mastodon</td><td><a target="_blank" href="https://fosstodon.org/@pamelafox">@pamelafox@fosstodon.org</a></td></tr>
+        <tr><td>BlueSky</td><td><a target="_blank" href="https://bsky.app/profile/pamelafox.bsky.social">@pamelafox.bsky.social</a></td></tr>
+        <tr><td>GitHub</td><td><a target="_blank" href="https://www.github.com/pamelafox">www.github.com/pamelafox</a></td></tr>
+        <tr><td>Website</td><td><a target="_blank" href="https://www.pamelafox.org">pamelafox.org</a></td></tr>
+        </tbody>
+    </table>
+</section>
+
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js/dist/reveal.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js-menu@2.1.0/menu.js"></script>
+    <script>
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            hash: true,
+            center: false,
+            slideNumber: true,
+            showNotes: false,
+            margin: 0,
+            preloadIframes: true,
+            autoPlayMedia: true,
+            plugins: [ RevealHighlight, RevealMenu ],
+            pdfSeparateFragments: true
+        });
+    </script>
+    </body>
+</html>
