@@ -24,7 +24,7 @@ It contains:
 | 1 | `servers/level1_freeform.py` | `get_db_schema`, `execute_sql` | Free-form SQL, full access |
 | 2 | `servers/level2_readonly.py` | `get_db_schema`, `execute_readonly_sql` | SQL parsed with pglast, non-SELECT rejected |
 | 3 | `servers/level3_scoped.py` | `query_observations`, `query_species` | Server controls SELECT/FROM, LLM fills WHERE |
-| 4 | `servers/level4_typed.py` | `search_species`, `get_species_phenology`, `search_observations`, `search_historical_observations`, `add_observation`, `delete_observation` | Fully typed, no SQL surface |
+| 4 | `servers/level4_typed.py` | `search_species`, `search_observations`, `search_historical_observations`, `add_observation`, `delete_observation` | Fully typed, no SQL surface |
 
 ## Setup
 

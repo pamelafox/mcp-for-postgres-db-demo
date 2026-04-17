@@ -39,12 +39,6 @@ BEE_CASES: list[BeeCase] = [
         expected_tools=["search_species"],
         difficulty="clear",
     ),
-    BeeCase(
-        name="species_phenology",
-        prompt="What months are Western Leafcutter Bees most active?",
-        expected_tools=["search_species", "get_species_phenology"],
-        difficulty="clear",
-    ),
     # --- Recent observation search ---
     BeeCase(
         name="observations_near_location",

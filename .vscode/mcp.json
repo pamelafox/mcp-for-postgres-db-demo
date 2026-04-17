@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"db-mcp-server": {
+			"url": "http://localhost:8000/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}

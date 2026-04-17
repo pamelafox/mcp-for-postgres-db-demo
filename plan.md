@@ -50,7 +50,7 @@ We’ll compare multiple styles of MCP tool arguments, from free‑form SQL to s
 One FastMCP server file per level, each runnable independently:
 
 - `servers/level1_freeform.py` — free-form SQL
-- `servers/level1a_discovery.py` — granular schema discovery + free-form SQL
+- `servers/level1b_discovery.py` — granular schema discovery + free-form SQL
 - `servers/level2_readonly.py` — read-only SQL with parsing
 - `servers/level3_scoped.py` — scoped WHERE clause
 - `servers/level4_typed.py` — fully typed tools with rich descriptions
@@ -190,7 +190,6 @@ Note: the LLM itself resists generating this payload when asked directly — it'
 |------|-------------|-------------|
 | `search_species(q: str, limit: int)` | `readOnlyHint: True` | Full-text search over species names. Use to resolve a name to a taxon_id. |
 | `search_observations(lat: float, lon: float, radius_km: float, start_date: date, end_date: date, taxon_id: int \| None)` | `readOnlyHint: True` | Search recent observations (2020+) by location/date/species. |
-| `search_historical_observations(lat: float, lon: float, radius_km: float, start_year: int, end_year: int, taxon_id: int \| None)` | `readOnlyHint: True` | Search pre-2020 archive. Different schema handled internally. |
 | `add_observation(taxon_id: int, lat: float, lon: float, observed_date: date)` | `destructiveHint: True` | Insert a new personal observation. |
 | `delete_observation(observation_id: int)` | `destructiveHint: True` | Delete an observation by ID. |
 
@@ -260,10 +259,10 @@ Elicitation is for when the server discovers something the LLM couldn't have kno
 
 ### Demo 1: Destructive operation confirmation
 
-`delete_observation(observation_id=48291)` → server looks up the record, elicits:
+`delete_observation(observation_id=319809831)` → server looks up the record, elicits:
 
 > You're about to delete:
-> Observation #48291 — Bombus vosnesenskii, observed 2025-06-15 at (37.77, -122.42), quality: research grade.
+> Observation #319809831 — Apis mellifera (Western Honey Bee), observed 2025-10-09 at (37.791, -122.436), quality: research.
 > Proceed? [yes/no]
 
 Pairs with `destructiveHint` — the client gives a generic "this tool modifies data" prompt, elicitation adds data-aware confirmation.
@@ -354,20 +353,37 @@ Here's a demo plan for each section. For each, I'll list what server to run, wha
 
 **Show:**
 1. **Happy path:** "What bees are active near Oakland in March?" — shows `get_db_schema` → `execute_sql` with a JOIN + PostGIS query working
-2. **Mutation:** "How many observations have quality_grade = 'needs_id'? Actually, delete those." — shows the 18k row deletion
+  Assets:
+  level1b_both_calls.png
+  level1b_execute_sql.png
+  level1b_select.mov
 
-**Reset after:** `uv run ingest_observations.py --csv data/observations.csv` to restore data
+2. **Mutation:** "How many observations have quality_grade = 'needs_id'? Actually, delete those." — shows the 18k row deletion. (Opus will not do it, but Gemini 2.5 will!)
+  Assets:
+  level1b_delete_gemini_done.png
+  level1b_delete_opus_confirm.png
+  level1b_delete.mov
+
+**Reset after:** `PGPASSWORD=postgres psql -h localhost -U admin -d bees -c "TRUNCATE observations;" && uv run scripts/ingest_observations.py --csv data/observations.csv` to restore data
+
 
 ---
 
 ### Demo 2: Schema bloat (optional screenshot)
 **No live demo needed** — the slide already shows the full schema dump. But if you want, show the `get_db_schema` tool result in the Copilot chat to emphasize how much context it dumps.
 
+level1b_get_db_schema.png
+
 ---
 
 ### Demo 3: Progressive discovery (optional)
-**Server:** `uv run servers/level1a_discovery.py`
+**Server:** `uv run servers/level1b_discovery.py`
 **Show:** Same query as Demo 1 — notice the agent calls `list_tables` → `describe_table("observations")` → `describe_table("species")` → `execute_sql`. More round-trips but less context.
+
+level1b_select.mov
+level1b_list_tables.png
+level1b_describe_table_obs.png
+level1b_describe_table_species.png
 
 ---
 
@@ -376,8 +392,22 @@ Here's a demo plan for each section. For each, I'll list what server to run, wha
 
 **Show:**
 1. **Happy path:** "What bees were seen near Berkeley last year?" — works fine
+
+level2_select.png
+level2_select.mov
+
 2. **Blocked:** "Delete all observations where quality_grade is needs_id" — parser rejects it, show the ToolError
-3. **Optional:** Show the timeout by asking for something expensive
+
+level2_delete_refusal.mov - smarter models realize they cant even do it
+level2_delete_toolerror.mov - older models still try it, get tool error
+level2_delete_toolerror.png
+
+3. **Optional:** Show the timeout by asking for something expensive: How many pairs of bee observations were made within 1km of each other?
+
+level2_join_timeout.png
+level2_join_timeout_gridbucket.png
+level2_join_timeout_randomsamples.png
+level2_join_timeout.mov
 
 ---
 
@@ -386,18 +416,28 @@ Here's a demo plan for each section. For each, I'll list what server to run, wha
 
 **Show:**
 1. **Multi-step chaining:** "Find leafcutter bees near Berkeley" — agent calls `search_species` → `search_observations(taxon_id=...)`. Show the tool calls panel.
+
+  level4_typed_search_species.png
+  level4_typed_search_obs.png
+
 2. **Typed parameters:** Point out that the agent can't construct arbitrary SQL — it can only pass lat/lon/dates/taxon_id
 
+  level4_typed_count_failure.mov
+  level4_typed_count_failure.png
 ---
 
 ### Demo 6: Elicitation
 **Server:** `uv run servers/level5_elicitation.py`
 
 **Show:**
-1. **Delete confirmation:** "Delete observation 12345" — server looks up the record and elicits with details
+1. **Delete confirmation:** "Delete observation 319809831" — server looks up the record and elicits with details
+   level5_delete_confirm.png
+   level5_delete_confirm.mov
+
 2. **Boundary violation:** "Show me all bee observations within 200km of San Francisco" — server elicits to narrow the radius
 
-**Note:** Elicitation requires a client that supports it. Check if your agent framework or VS Code Copilot handles `elicit()`. If not, show the server logs or mock it.
+   level5_radius_confirm.png
+   level5_radius_confirm.mov
 
 ---
 

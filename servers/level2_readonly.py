@@ -70,6 +70,8 @@ async def get_db_schema() -> str:
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), timeout=30.0)
 async def execute_readonly_sql(sql: str) -> str:
     """Execute a read-only SQL query against the database and return results.
+
+    The database contains bee data from iNaturalist, including species taxonomy and observations.
     Only SELECT statements are allowed. Non-SELECT statements will be rejected.
     A LIMIT clause is appended if not present, and results are capped at 100 rows.
     """

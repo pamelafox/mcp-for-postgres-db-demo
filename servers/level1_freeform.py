@@ -42,6 +42,7 @@ async def get_db_schema() -> str:
 async def execute_sql(sql: str) -> str:
     """Execute a SQL query against the database and return results.
 
+    The database contains bee data from iNaturalist, including species taxonomy and observations.
     You can run any SQL statement including SELECT, INSERT, UPDATE, DELETE.
     Results are returned as text rows.
     """

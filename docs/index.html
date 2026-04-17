@@ -1021,8 +1021,12 @@ async def delete_observation(observation_id: int) -> str:
 
 <section>
     <h3>Tool elicitations</h3>
-    <p>By default, an elicitation asks for a confirmation (approve/reject):</p>
+    <p>MCP clients will render a prompt (if they support it):</p>
     <pre style="height:545px;"><code class="language-python" data-trim data-noescape>
+class DeleteConfirmation(BaseModel):
+    confirm: bool = Field(title="Confirm deletion",
+        description="Check to confirm permanent deletion")
+
 @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
 async def delete_observation(ctx: Context, observation_id: int) -> str:
     """Delete a bee observation."""
@@ -1030,9 +1034,9 @@ async def delete_observation(ctx: Context, observation_id: int) -> str:
     confirmation = await ctx.elicit(
         f"You're about to permanently delete: Observation #{row.observation_id} "
         f"  {row.scientific_name} on {row.observed_date} - Proceed?",
-        response_type=None,  # Just accept/decline, no data needed
+        response_type=DeleteConfirmation,
     )
-    if confirmation.action != "accept":
+    if confirmation.action != "accept" or not confirmation.data.confirm:
         return "Deletion cancelled."
     await session.execute(
         text("DELETE FROM observations WHERE observation_id = :oid"),
