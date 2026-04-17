@@ -403,6 +403,53 @@
 			font-size: 0.9em;
 			color: var(--posette-deep);
 		}
+
+		/* Screenshot slides */
+		.reveal section.screenshot-slide {
+			display: flex !important;
+			flex-direction: column;
+			align-items: flex-start;
+			justify-content: flex-start;
+			text-align: left;
+			padding: 24px 40px 20px;
+		}
+		.reveal section.screenshot-slide h3 {
+			font-size: 1.2em;
+			margin-bottom: 10px;
+			margin-top: 0;
+		}
+		.reveal section.screenshot-slide .screenshot-wrap {
+			border-radius: 12px;
+			border: 1px solid #d0d7de;
+			box-shadow: 0 8px 32px rgba(42, 20, 122, 0.12);
+			overflow: hidden;
+			line-height: 0;
+		}
+		.reveal section.screenshot-slide .screenshot-wrap img {
+			max-width: 88vw;
+			max-height: 560px;
+			display: block;
+		}
+		.reveal section.screenshot-slide .screenshot-caption {
+			margin-top: 10px;
+			font-size: 0.65em;
+			color: var(--posette-muted);
+		}
+		.reveal section.screenshot-slide .agent-badge {
+			display: inline-block;
+			vertical-align: middle;
+			margin-right: 10px;
+			padding: 5px 14px;
+			border-radius: 999px;
+			background: linear-gradient(135deg, #6133ff 0%, #00DEA8 100%);
+			color: #fff;
+			font-family: 'Outfit', system-ui, sans-serif;
+			font-size: 0.55em;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			line-height: 1.4;
+		}
 		</style>
 	</head>
     <body>
@@ -424,29 +471,23 @@
 <!-- ==========================================
      DEMO: Level 1 in VS Code
      ========================================== -->
-<section class="demo-slide demo-card">
-    <div class="demo-card-shell">
-        <div class="demo-card-meta">
-            <span class="demo-badge">Live Demo</span>
-        </div>
-        <div class="demo-card-accent"></div>
-        <h2>Chatting with a Postgres DB</h2>
-        <p>Using GitHub Copilot agent + an MCP server to query bee observations in the Bay Area.</p>
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Chatting with a Postgres DB</h3>
+    <div class="screenshot-wrap">
+        <video src="level1a_select.mov" autoplay loop muted playsinline style="max-width:90vw; max-height:560px; display:block;"></video>
     </div>
-    <aside class="notes">
-        Demo: Open VS Code, show the MCP server (level1_freeform.py) running. Ask "What bees are active near San Francisco in March?" Show the tool calls. Then ask "delete the needs_id observations" to show the mutation risk.
-    </aside>
+    <p class="screenshot-caption">GitHub Copilot using an MCP server for querying bee observations.</p>
 </section>
 
 <!-- ==========================================
      MCP OVERVIEW
      ========================================== -->
-<section class="heading-only">
+<section class="heading-only" data-visibility="hidden">
     <img src="mcp_logo_white_transparent.svg" alt="MCP logo" style="width: 680px; max-width: 88%; margin: 0 0 22px 0; opacity: 0.98;">
     <p style="font-size: 0.9em;"><a target="_blank" href="https://modelcontextprotocol.io/" style="color: rgba(255, 255, 255, 0.92);">modelcontextprotocol.io</a></p>
 </section>
 
-<section>
+<section data-visibility="hidden">
     <h3>Before MCP</h3>
     <p>Every integration with an AI agent had to be done individually:</p>
     <svg viewBox="0 0 900 400" style="width: 100%; margin: 0 auto; display: block;" xmlns="http://www.w3.org/2000/svg">
@@ -511,6 +552,7 @@
         <g transform="translate(450 146)"><animate attributeName="opacity" values="1;0.88;1" dur="2.2s" begin="0.35s" repeatCount="indefinite"/><rect x="-30" y="-13" width="60" height="26" rx="13" fill="#fff" stroke="#0078D4" stroke-width="1.8"/><text x="0" y="5" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#0078D4" font-weight="700">MCP</text></g>
         <g transform="translate(645 120)"><animate attributeName="opacity" values="1;0.88;1" dur="2.2s" begin="0.7s" repeatCount="indefinite"/><rect x="-30" y="-13" width="60" height="26" rx="13" fill="#fff" stroke="#0078D4" stroke-width="1.8"/><text x="0" y="5" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#0078D4" font-weight="700">MCP</text></g>
     </svg>
+
 </section>
 
 <!-- ==========================================
@@ -587,10 +629,17 @@ async def execute_sql(sql: str) -> str:
     <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level1_freeform.py">servers/level1_freeform.py</a></p>
 </section>
 
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Calling free-form SQL tools</h3>
+    <div class="screenshot-wrap">
+        <img src="level1a_both_calls.png" alt="Agent calls get_db_schema then execute_sql to answer a query about bees in El Cerrito">
+    </div>
+</section>
+
 <section>
     <h3>🥺 Problem: Schema bloat</h3>
     <p style="font-size:0.8em;"><code>get_db_schema()</code> dumps <em>everything</em>: 5 tables, 60+ columns:</p>
-    <div style="column-count: 3; column-gap: 18px; column-rule: 1px solid #e0d8f8; background: #faf8ff; border: 1px solid #d0d7de; border-radius: 8px; padding: 0px 16px; font-family: monospace; font-size: 0.45em; line-height: 1.35; white-space: pre; color: #190649;">
+    <div style="width:90%; column-count: 3; column-gap: 18px; column-rule: 1px solid #e0d8f8; background: #faf8ff; border: 1px solid #d0d7de; border-radius: 8px; padding: 0px 16px; font-family: monospace; font-size: 0.40em; line-height: 1.35; white-space: pre; color: #190649;">
 <span style="color:#6133ff;font-weight:700;">TABLE geography_columns</span>
   f_table_catalog name NULL
   f_table_schema name NULL
@@ -672,9 +721,8 @@ async def execute_sql(sql: str) -> str:
 </section>
 
 <section>
-    <h3>Progressive schema discovery</h3>
-    <!--<p>Provide tools for incremental schema exploration:</p>-->
-    <pre style="height:720px;"><code class="language-python" data-trim data-noescape >
+    <h3>Schema discovery tools</h3>
+    <pre style="height:720px; font-size:0.45em;"><code class="language-python" data-trim data-noescape >
 @mcp.tool()
 async def list_tables() -> str:
     """List all tables in the public schema."""
@@ -703,27 +751,44 @@ async def describe_table(table_name: str) -> str:
     <aside class="speaker-notes">Forces a <strong>look → plan → query</strong> workflow. Less context bloat.</aside>
 </section>
 
-<section>
-    <h3>🤕 Problem: Accidental mutations</h3>
-    <p>An agent will happily modify your data- and you may not want that.</p>
-    <blockquote style="font-size:0.8em;">
-        "How many observations have quality_grade = 'needs_id'?<br>
-        We may want to delete those, they're not as useful."
-    </blockquote>
-    <div class="fragment">
-    <p style="font-size:0.8em; margin-bottom: 4px;">Tool calls:</p>
-    <pre style="margin-top: 0;"><code class="language-text" data-trim>
-execute_sql(sql="SELECT COUNT(*) FROM observations WHERE quality_grade = 'needs_id'")
-→ 18,633
-
-execute_sql(sql="DELETE FROM observations WHERE quality_grade = 'needs_id'")
-→ Statement executed. Rows affected: 18633
-    </code></pre>
+<section class="screenshot-slide" data-visibility="hidden">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Progressive discovery: list_tables</h3>
+    <div class="screenshot-wrap">
+        <img src="level1b_list_tables.png" alt="The list_tables tool returns just the table names">
     </div>
-    <p class="fragment" style="font-size:0.85em;"><strong>18,633 rows deleted.</strong> No hesitation, no confirmation.</p>
-    <aside class="notes">
-        This was tested with gpt-4.1 via the Agent Framework. The LLM didn't refuse; it followed the user's intent exactly. The problem isn't the model, it's the tool surface.
-    </aside>
+    <p class="screenshot-caption">Step 1: <code>list_tables</code> returns just the table names — no column bloat.</p>
+</section>
+
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Calling schema tools</h3>
+    <div class="screenshot-wrap">
+        <img src="level1b_describe_table_species.png" alt="The describe_table tool returns columns for the species table">
+    </div>
+</section>
+
+<section>
+    <h3>🤕 Problem: Mutations without guardrails</h3>
+    <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.72em; margin-bottom: 8px;">
+        <span style="font-size: 1.4em; flex-shrink: 0;">🗣️</span>
+        <div style="background: #e8e4f0; border-radius: 14px; padding: 8px 14px;">
+            "How many bee observations have quality grade = 'needs_id'? Actually, delete those."
+        </div>
+    </div>
+    <div style="display: flex; gap: 16px; margin-top: 8px;">
+        <div style="flex: 1; text-align: center;">
+            <div style="border-radius: 10px; border: 1px solid #d0d7de; box-shadow: 0 4px 16px rgba(42,20,122,0.10); overflow: hidden; line-height: 0;">
+                <img src="level1a_delete_opus_confirm.png" alt="Claude Opus asks for confirmation" style="width: 100%; display: block;">
+            </div>
+            <p style="font-size: 0.5em; color: #555; margin-top: 6px;">Opus 4.6: asks first, but only because it was trained that way.</p>
+        </div>
+        <div style="flex: 1; text-align: center;" class="fragment" data-fragment-index="1">
+            <div style="border-radius: 10px; border: 1px solid #d0d7de; box-shadow: 0 4px 16px rgba(42,20,122,0.10); overflow: hidden; line-height: 0;">
+                <img src="level1a_delete_gemini_done.png" alt="Gemini deletes without hesitation" style="width: 100%; display: block;">
+            </div>
+            <p style="font-size: 0.5em; color: #555; margin-top: 6px;">Gemini 2.5 Pro: <strong>deletes immediately</strong>. No pause.</p>
+        </div>
+    </div>
+    <p class="fragment" data-fragment-index="1" style="font-size:0.75em; margin-top: 8px;"><strong>18,633 rows deleted.</strong> The problem isn't the model — it's the tool surface.</p>
 </section>
 
 <!-- ==========================================
@@ -758,6 +823,14 @@ async def execute_readonly_sql(sql: str) -> dict:
     <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level2_readonly.py">servers/level2_readonly.py</a></p>
 </section>
 
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Calling read-only SQL tools</h3>
+    <div class="screenshot-wrap">
+        <img src="level2_select.png" alt="The read-only tool successfully executes a SELECT query">
+    </div>
+</section>
+
+
 <section>
     <h3><code>readOnlyHint</code> is a hint, not a guarantee</h3>
     <pre><code class="language-python" data-trim>
@@ -781,7 +854,7 @@ async def execute_readonly_sql(sql: str) -> dict:
             </ul>
         </div>
     </div>
-    <p style="font-size:0.75em; margin-top: 12px;"><strong>Annotations are hints, not contracts.</strong> Actual safety comes from the tool implementation, DB permissions, and parsing.</p>
+    <p style="font-size:0.75em; margin-top: 12px;"><strong>Annotations are hints, not contracts.</strong> Actual safety must come from the MCP server.</p>
     <p style="font-size:0.65em;">📖 <a target="_blank" href="https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/">MCP Blog: Tool Annotations as Risk Vocabulary</a></p>
 </section>
 
@@ -856,6 +929,21 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
     <strong>Or could we just... not expose SQL at all?</strong></p>
 </section>
 
+
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Blocked on DELETE queries</h3>
+    <div class="screenshot-wrap">
+        <img src="level2_delete_toolerror.png" alt="The read-only tool rejects a DELETE statement">
+    </div>
+</section>
+
+<section class="screenshot-slide" data-visibility="hidden">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Blocked by timeout</h3>
+    <div class="screenshot-wrap">
+        <img src="level2_join_timeout.png" alt="An expensive spatial self-join query times out after 30 seconds">
+    </div>
+</section>
+
 <!-- ==========================================
      LEVEL 4: FULLY TYPED
      ========================================== -->
@@ -886,7 +974,21 @@ async def search_species(q: str, limit: int = 10) -> list[SpeciesResult]:
     🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level4_typed.py">servers/level4_typed.py</a></p>
 </section>
 
-<section>
+<section class="screenshot-slide" data-visibility="hidden">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Calling table-specific tools</h3>
+    <div class="screenshot-wrap">
+        <img src="level4_typed_search_species.png" alt="The search_species tool returns structured results for carpenter bees">
+    </div>
+</section>
+
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Calling table-specific tools</h3>
+    <div class="screenshot-wrap">
+        <img src="level4_typed_search_obs.png" alt="The search_observations tool returns observation records with typed parameters">
+    </div>
+</section>
+
+<section data-visibility="hidden">
     <h3>Multi-step tool chaining</h3>
     <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.72em; max-width: 95%;">
         <div style="display: flex; align-items: flex-start; gap: 10px;">
@@ -953,7 +1055,7 @@ async def delete_observation(observation_id: int) -> str:
     <p style="font-size:0.75em;"><code>destructiveHint: True</code> tells the client to prompt the user before calling.</p>
 </section>
 
-<section>
+<section data-visibility="hidden">
     <h3>Destructive tool flow</h3>
     <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.68em; max-width: 95%;">
         <div style="display: flex; align-items: flex-start; gap: 10px;">
@@ -996,17 +1098,10 @@ async def delete_observation(observation_id: int) -> str:
     </div>
 </section>
 
-<!-- ==========================================
-     DEMO: Level 4
-     ========================================== -->
-<section class="demo-slide demo-card">
-    <div class="demo-card-shell">
-        <div class="demo-card-meta">
-            <span class="demo-badge">Demo</span>
-        </div>
-        <div class="demo-card-accent"></div>
-        <h2>Level 4 in action</h2>
-        <p>Same query, typed tools: multi-step chaining, no SQL surface.</p>
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Constrained by typed tools</h3>
+    <div class="screenshot-wrap">
+        <img src="level4_typed_count_failure.png" alt="The LLM realizes it cannot count all observations because the typed tools require location parameters">
     </div>
 </section>
 
@@ -1020,7 +1115,7 @@ async def delete_observation(observation_id: int) -> str:
 
 
 <section>
-    <h3>Tool elicitations</h3>
+    <h3>Tool elicitation for destructive actions</h3>
     <p>MCP clients will render a prompt (if they support it):</p>
     <pre style="height:545px;"><code class="language-python" data-trim data-noescape>
 class DeleteConfirmation(BaseModel):
@@ -1047,7 +1142,14 @@ async def delete_observation(ctx: Context, observation_id: int) -> str:
     <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level5_elicitation.py">servers/level5_elicitation.py</a></p>
 </section>
 
-<section>
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Requesting deletion confirmation</h3>
+    <div class="screenshot-wrap">
+        <img src="level5_delete_confirm.png" alt="VS Code shows an elicitation dialog asking to confirm deletion of a specific observation">
+    </div>
+</section>
+
+<section data-visibility="hidden">
     <h3>Elicitation in action</h3>
     <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.68em; max-width: 95%;">
         <div style="display: flex; align-items: flex-start; gap: 10px;">
@@ -1087,8 +1189,8 @@ async def delete_observation(ctx: Context, observation_id: int) -> str:
     <p class="fragment" style="font-size:0.7em; margin-top: 8px;"><strong>destructiveHint</strong> = generic prompt from client.<br><strong>elicitation</strong> = server can provide even more details on what will be deleted.</p>
 </section>
 
-<section>
-    <h3>Tool elicitation with custom prompt</h3>
+<section data-visibility="hidden">
+    <h3>Tool elicitation for query refinement</h3>
     <pre style="height:600px;"><code class="language-python" data-trim data-noescape>
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def search_observations(
@@ -1115,7 +1217,14 @@ async def search_observations(
     </aside>
 </section>
 
-<section>
+<section class="screenshot-slide" data-visibility="hidden">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Suggesting cheaper query</h3>
+    <div class="screenshot-wrap">
+        <img src="level5_radius_confirm.png" alt="VS Code shows an elicitation dialog offering to narrow a 100km radius to 50km">
+    </div>
+</section>
+
+<section data-visibility="hidden">
     <h3>Boundary violation in action</h3>
     <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.68em; max-width: 95%;">
         <div style="display: flex; align-items: flex-start; gap: 10px;">
@@ -1213,6 +1322,13 @@ async def search_historical_observations(
         <li>Return a hint in the result: <em>"This only covers 2020+. For older records, also call search_historical_observations."</em></li>
         <li>Keep everything in one table</li>
     </ul>
+</section>
+
+<!-- ==========================================
+     TOOL SELECTION
+     ========================================== -->
+<section class="heading-only">
+    <h2>Final words</h2>
 </section>
 
 <!-- ==========================================
