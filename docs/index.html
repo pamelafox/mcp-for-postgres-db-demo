@@ -1033,7 +1033,7 @@ async def search_species(q: str, limit: int = 10) -> list[SpeciesResult]:
     </aside>
 </section>
 
-<section>
+<section data-visibility="hidden">
     <h3>Destructive tools with <code>destructiveHint</code></h3>
     <pre style="height:510px;"><code class="language-python" data-trim data-noescape>
 @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
@@ -1103,6 +1103,8 @@ async def delete_observation(observation_id: int) -> str:
     <div class="screenshot-wrap">
         <img src="level4_typed_count_failure.png" alt="The LLM realizes it cannot count all observations because the typed tools require location parameters">
     </div>
+
+    <p>Typed tools are the safest, but they limit what an agent can do.</p>
 </section>
 
 <!-- ==========================================
@@ -1110,7 +1112,7 @@ async def delete_observation(observation_id: int) -> str:
      ========================================== -->
 <section class="heading-only">
     <h2>Elicitation</h2>
-    <p style="font-size:0.85em;">Data-aware confirmations from the server</p>
+    <p style="font-size:0.85em;">One more layer of safety</p>
 </section>
 
 
