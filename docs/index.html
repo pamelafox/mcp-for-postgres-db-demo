@@ -369,7 +369,7 @@
 			margin-top: 4px;
 			margin-left: 0;
 			margin-right: 0;
-			width: 100%;
+			width: 90%;
 		}
 		.reveal pre code.hljs {
 			background: #faf8ff;
@@ -474,9 +474,8 @@
 <section class="screenshot-slide">
     <h3><span class="agent-badge">🤖 Agent in action</span> Chatting with a Postgres DB</h3>
     <div class="screenshot-wrap">
-        <video src="level1a_select.mov" autoplay loop muted playsinline style="max-width:90vw; max-height:560px; display:block;"></video>
+        <video src="level1a_select.mov" autoplay loop muted playsinline style="max-width:58vw; display:block;" alt=""></video>
     </div>
-    <p class="screenshot-caption">GitHub Copilot using an MCP server for querying bee observations.</p>
 </section>
 
 <!-- ==========================================
@@ -639,7 +638,7 @@ async def execute_sql(sql: str) -> str:
 <section>
     <h3>🥺 Problem: Schema bloat</h3>
     <p style="font-size:0.8em;"><code>get_db_schema()</code> dumps <em>everything</em>: 5 tables, 60+ columns:</p>
-    <div style="width:90%; column-count: 3; column-gap: 18px; column-rule: 1px solid #e0d8f8; background: #faf8ff; border: 1px solid #d0d7de; border-radius: 8px; padding: 0px 16px; font-family: monospace; font-size: 0.40em; line-height: 1.35; white-space: pre; color: #190649;">
+    <div style="width:90%; column-count: 3; column-gap: 18px; column-rule: 1px solid #e0d8f8; background: #faf8ff; border: 1px solid #d0d7de; border-radius: 8px; padding: 0px 16px; font-family: monospace; font-size: 0.35em; line-height: 1.35; white-space: pre; color: #190649;">
 <span style="color:#6133ff;font-weight:700;">TABLE geography_columns</span>
   f_table_catalog name NULL
   f_table_schema name NULL
@@ -722,32 +721,28 @@ async def execute_sql(sql: str) -> str:
 
 <section>
     <h3>Schema discovery tools</h3>
-    <pre style="height:720px; font-size:0.45em;"><code class="language-python" data-trim data-noescape >
-@mcp.tool()
+    <pre style="height:490px; font-size:0.42em;"><code class="language-python" data-trim data-noescape >
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def list_tables() -> str:
-    """List all tables in the public schema."""
+    """List all tables in the public schema. Call this first to discover available tables."""
     async with engine.connect() as conn:
         result = await conn.execute(text(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"))
-        return "\n".join(row[0] for row in result.fetchall())
+        return {"tables": [row[0] for row in result.fetchall()]}
 
-        @mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def describe_table(table_name: str) -> str:
-    """Describe the columns of a specific table."""
+    """Describe the columns of a specific table. Call list_tables() first to see available tables."""
     async with engine.connect() as conn:
         result = await conn.execute(text(
-            "SELECT column_name, data_type, is_nullable "
-            "FROM information_schema.columns "
-            "WHERE table_schema = 'public' AND table_name = :table_name "
-            "ORDER BY ordinal_position"
-        ), {"table_name": table_name})
+            "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = :table_name "), {"table_name": table_name})
         rows = result.fetchall()
-    lines = [f"TABLE {table_name}:"]
-    for column_name, data_type in rows:
-        lines.append(f"  {column_name} {data_type}")
-    return "\n".join(lines)
+    columns = [{"name": col, "type": dt, "nullable": n == "YES"} for col, dt, n in rows]
+    return {"table": table_name, "columns": columns}
     </code></pre>
+    <p style="font-size:0.75em;">🔗 Full server code: <a target="_blank" href="https://github.com/pamelafox/mcp-for-postgres-db-demo/blob/main/servers/level1b_discovery.py">servers/level1b_discovery.py</a></p>
     <aside class="speaker-notes">Forces a <strong>look → plan → query</strong> workflow. Less context bloat.</aside>
 </section>
 
@@ -801,7 +796,7 @@ async def describe_table(table_name: str) -> str:
 
 <section>
     <h3>Read-only SQL execution tool</h3>
-    <pre style="height:570px;"><code class="language-python" data-trim data-noescape>
+    <pre style="height:485px; font-size:0.46em;"><code class="language-python" data-trim data-noescape>
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True), timeout=30.0)
 async def execute_readonly_sql(sql: str) -> dict:
     """Execute a read-only SQL query against the database.
@@ -833,10 +828,10 @@ async def execute_readonly_sql(sql: str) -> dict:
 
 <section>
     <h3><code>readOnlyHint</code> is a hint, not a guarantee</h3>
-    <pre><code class="language-python" data-trim>
+    <pre style="margin-top: 32px;"><code class="language-python" data-trim>
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     </code></pre>
-    <div style="display: flex; gap: 16px; margin-top: 12px; font-size: 0.7em;">
+    <div style="display: flex; gap: 16px; margin-top: 12px; font-size: 0.7em; width:90%">
         <div style="flex: 1; background: #e8f5e9; border: 2px solid #66bb6a; border-radius: 14px; padding: 14px 18px;">
             <div style="font-weight: 700; color: #2e7d32; margin-bottom: 8px;">✅ What it does</div>
             <ul style="margin: 0; padding-left: 18px;">
@@ -849,32 +844,32 @@ async def execute_readonly_sql(sql: str) -> dict:
             <div style="font-weight: 700; color: #c62828; margin-bottom: 8px;">❌ Limitations</div>
             <ul style="margin: 0; padding-left: 18px;">
                 <li>Does not enforce read-only on the server</li>
-                <li>An untrusted server can lie about it</li>
                 <li>Does not prevent SQL injection or mutations</li>
+                <li>An untrusted server can lie about it</li>
             </ul>
         </div>
     </div>
-    <p style="font-size:0.75em; margin-top: 12px;"><strong>Annotations are hints, not contracts.</strong> Actual safety must come from the MCP server.</p>
+    <p style="font-size:0.75em; margin-top: 60px;"><strong>Annotations are hints, not contracts.</strong> Actual safety must come from the MCP server.</p>
     <p style="font-size:0.65em;">📖 <a target="_blank" href="https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/">MCP Blog: Tool Annotations as Risk Vocabulary</a></p>
 </section>
 
 <section>
     <h3>Read-only validation with AST-parsing</h3>
     
-    <pre><code class="language-python" data-trim data-noescape>
+    <pre style="font-size: 0.45em;"><code class="language-python" data-trim data-noescape>
 def _validate_readonly_sql(sql: str) -> str:
     try:
         stmts = pglast.parse_sql(sql)
     except pglast.parser.ParseError as e:
         raise ValueError(f"SQL parse error: {e}")
-    
+
     if len(stmts) != 1:
         raise ValueError("Only single statements are allowed")
     if (stmt_type := type(stmts[0].stmt).__name__) != "SelectStmt":
         raise ValueError(f"Only SELECT allowed, got {stmt_type}")
     return sql
     </code></pre>
-    <table style="font-size:0.6em; margin-top: 8px; width: 100%;">
+    <table style="font-size:0.6em; margin-top: 8px; width: 90%; margin-left:0px;">
         <thead><tr><th>Input</th><th>Result</th></tr></thead>
         <tbody>
             <tr><td><code>NOT VALID SQL !!!</code></td><td>❌ "SQL parse error: syntax error"</td></tr>
@@ -888,16 +883,16 @@ def _validate_readonly_sql(sql: str) -> str:
 <section>
     <h3>DB-level read-only enforcement</h3>
     <pre><code class="language-sql" data-trim>
--- Quick fix: read-only at the connection level
+-- Set read-only at the connection level
 SET default_transaction_read_only = ON;
 
--- Production fix: dedicated read-only role
+-- Create dedicated read-only role
 CREATE ROLE mcp_readonly;
 GRANT CONNECT ON DATABASE bees TO mcp_readonly;
 GRANT USAGE ON SCHEMA public TO mcp_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
     </code></pre>
-    <table style="font-size:0.55em; margin-top: 8px; width: 100%;">
+    <table style="font-size:0.55em; margin-top: 8px; width: 90%; margin-left:0px;">
         <thead><tr><th>SQL</th><th>Result</th></tr></thead>
         <tbody>
             <tr><td><code>WITH d AS (DELETE ...) SELECT * FROM d</code></td><td>❌ "cannot execute DELETE in a read-only transaction"</td></tr>
@@ -906,6 +901,21 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
             <tr><td><code>SELECT * FROM observations LIMIT 10</code></td><td>✅ Passes</td></tr>
         </tbody>
     </table>
+</section>
+
+
+<section class="screenshot-slide">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Blocked on DELETE queries</h3>
+    <div class="screenshot-wrap">
+        <img src="level2_delete_toolerror.png" alt="The read-only tool rejects a DELETE statement">
+    </div>
+</section>
+
+<section class="screenshot-slide" data-visibility="hidden">
+    <h3><span class="agent-badge">🤖 Agent in action</span> Blocked by timeout</h3>
+    <div class="screenshot-wrap">
+        <img src="level2_join_timeout.png" alt="An expensive spatial self-join query times out after 30 seconds">
+    </div>
 </section>
 
 <section>
@@ -930,19 +940,6 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
 </section>
 
 
-<section class="screenshot-slide">
-    <h3><span class="agent-badge">🤖 Agent in action</span> Blocked on DELETE queries</h3>
-    <div class="screenshot-wrap">
-        <img src="level2_delete_toolerror.png" alt="The read-only tool rejects a DELETE statement">
-    </div>
-</section>
-
-<section class="screenshot-slide" data-visibility="hidden">
-    <h3><span class="agent-badge">🤖 Agent in action</span> Blocked by timeout</h3>
-    <div class="screenshot-wrap">
-        <img src="level2_join_timeout.png" alt="An expensive spatial self-join query times out after 30 seconds">
-    </div>
-</section>
 
 <!-- ==========================================
      LEVEL 4: FULLY TYPED
@@ -954,19 +951,17 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
 
 <section>
     <h3>Fully typed table-specific tools</h3>
-    <pre style="height:515px"><code class="language-python" data-trim data-noescape>
+    <pre style="height:450px"><code class="language-python" data-trim data-noescape>
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def search_species(q: str, limit: int = 10) -> list[SpeciesResult]:
     """Search bee species by scientific or common name.
     Use to resolve a name to a taxon_id before calling other tools."""
     sql = text("""
-        SELECT taxon_id, scientific_name, common_name, family, genus
-        FROM species
+        SELECT taxon_id, scientific_name, common_name, family, genus FROM species
         WHERE to_tsvector('simple',
               coalesce(scientific_name,'') || ' ' || coalesce(common_name,''))
               @@ plainto_tsquery('simple', :q)
-        ORDER BY scientific_name ASC
-        LIMIT :limit""")
+        ORDER BY scientific_name ASC LIMIT :limit""")
     async with engine.connect() as conn:
         result = await conn.execute(sql, {"q": q, "limit": min(limit, 50)})
         return [SpeciesResult(...) for row in result.fetchall()]
@@ -1101,10 +1096,9 @@ async def delete_observation(observation_id: int) -> str:
 <section class="screenshot-slide">
     <h3><span class="agent-badge">🤖 Agent in action</span> Constrained by typed tools</h3>
     <div class="screenshot-wrap">
-        <img src="level4_typed_count_failure.png" alt="The LLM realizes it cannot count all observations because the typed tools require location parameters">
+        <img src="level4_typed_count_failure.png" alt="The LLM realizes it cannot count all observations because the typed tools require location parameters" style="max-height: 460px;">
     </div>
-
-    <p>Typed tools are the safest, but they limit what an agent can do.</p>
+    <p style="font-size: 0.85em;">Typed tools are the safest, but they limit what an agent can do.</p>
 </section>
 
 <!-- ==========================================
@@ -1119,21 +1113,16 @@ async def delete_observation(observation_id: int) -> str:
 <section>
     <h3>Tool elicitation for destructive actions</h3>
     <p>MCP clients will render a prompt (if they support it):</p>
-    <pre style="height:545px;"><code class="language-python" data-trim data-noescape>
-class DeleteConfirmation(BaseModel):
-    confirm: bool = Field(title="Confirm deletion",
-        description="Check to confirm permanent deletion")
-
+    <pre style="height:420px; font-size:0.45em;"><code class="language-python" data-trim data-noescape>
 @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
 async def delete_observation(ctx: Context, observation_id: int) -> str:
     """Delete a bee observation."""
     row = ...  # look up the record
-    confirmation = await ctx.elicit(
-        f"You're about to permanently delete: Observation #{row.observation_id} "
-        f"  {row.scientific_name} on {row.observed_date} - Proceed?",
-        response_type=DeleteConfirmation,
-    )
-    if confirmation.action != "accept" or not confirmation.data.confirm:
+    result = await ctx.elicit(
+        f"Permanently delete observation #{row.observation_id}?\n"
+        f"  {row.scientific_name} on {row.observed_date}\n"
+        response_type=["yes, delete it", "no, keep it"])
+    if result.action == "cancel" or result.data == "no, keep it":
         return "Deletion cancelled."
     await session.execute(
         text("DELETE FROM observations WHERE observation_id = :oid"),
@@ -1145,9 +1134,9 @@ async def delete_observation(ctx: Context, observation_id: int) -> str:
 </section>
 
 <section class="screenshot-slide">
-    <h3><span class="agent-badge">🤖 Agent in action</span> Requesting deletion confirmation</h3>
+    <h3><span class="agent-badge">🤖 Agent in action</span> Eliciting confirmation before deleting</h3>
     <div class="screenshot-wrap">
-        <img src="level5_delete_confirm.png" alt="VS Code shows an elicitation dialog asking to confirm deletion of a specific observation">
+        <img src="level5_delete_confirm.png" alt="VS Code shows an elicitation dialog asking to confirm deletion of a specific observation" style="max-height: 520px;">
     </div>
 </section>
 
@@ -1271,12 +1260,12 @@ async def search_observations(
      ========================================== -->
 <section class="heading-only">
     <h2>Tool selection</h2>
-    <p style="font-size:0.85em;">Will the LLM route correctly across multiple tables?</p>
+    <p style="font-size:0.85em;">Can the agent select the right tool?</p>
 </section>
 
 <section>
     <h3>Two tools: current data vs. historical data</h3>
-    <pre style="height:510px;"><code class="language-python" data-trim data-noescape>
+    <pre style="height:480px; font-size:0.52em;"><code class="language-python" data-trim data-noescape>
 async def search_observations(
     lat: float, lon: float, start_date: date, end_date: date,
     radius_km: float = 25, taxon_id: int | None = None,
@@ -1361,7 +1350,7 @@ async def search_historical_observations(
         <!-- Middle: Read-only -->
         <text x="400" y="155" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#2a147a" text-anchor="middle">Read-only SQL</text>
         <text x="400" y="175" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="middle">Data analytics</text>
-        <text x="400" y="250" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="middle">Parser + timeout + fetchmany</text>
+        <text x="400" y="250" font-family="Inter, sans-serif" font-size="14" fill="#555" text-anchor="middle">Parser + timeout + limit</text>
 
         <!-- Right: Operational -->
         <text x="880" y="100" font-family="Outfit, sans-serif" font-size="20" font-weight="800" fill="#2b8a3e" text-anchor="end">OPERATIONAL</text>
@@ -1371,7 +1360,7 @@ async def search_historical_observations(
 
         <!-- Bottom bar: Always -->
         <rect x="100" y="295" width="800" height="44" rx="22" fill="#2a147a" opacity="0.9"/>
-        <text x="500" y="323" font-family="Outfit, sans-serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">Always: DB-level permissions (least-privilege role + read-only transactions)</text>
+        <text x="500" y="323" font-family="Outfit, sans-serif" font-size="21" font-weight="700" fill="#fff" text-anchor="middle">Always: DB-level permissions (least-privilege role + read-only transactions)</text>
     </svg>
 </section>
 
